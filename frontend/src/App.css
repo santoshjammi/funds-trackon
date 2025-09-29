@@ -1,0 +1,14 @@
+/* Custom styles for TNIFMC Lead Management System */
+
+.App {
+  text-align: center;
+}
+
+/* Custom component styles can be added here */
+.dashboard-card {
+  transition: transform 0.2s ease-in-out;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-2px);
+}
