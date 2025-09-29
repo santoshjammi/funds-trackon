@@ -15,6 +15,7 @@ from app.controllers.opportunity_controller import opportunity_router
 from app.controllers.task_controller import task_router
 from app.controllers.tracker_controller import tracker_router
 from app.controllers.organization_controller import organization_router
+from app.controllers.meeting_controller import meeting_router
 from app.models.database import init_db, close_mongo_connection
 from app.utils.config import get_settings
 
@@ -54,6 +55,7 @@ app.include_router(user_router, prefix="/api/users", tags=["users"])
 app.include_router(opportunity_router, prefix="/api/opportunities", tags=["opportunities"])
 app.include_router(task_router, prefix="/api/tasks", tags=["tasks"])
 app.include_router(tracker_router, prefix="/api/tracker", tags=["tracker"])
+app.include_router(meeting_router, prefix="/api/meetings", tags=["meetings"])
 
 @app.get("/")
 async def root():

@@ -5,3 +5,10 @@ backend/__pycache__
 .env
 .vscode
 npm-debug.log
+backend/uploads
+backend/venv
+.idea
+*.pyc
+*.pyo
+*.pyd
+__pycache__/

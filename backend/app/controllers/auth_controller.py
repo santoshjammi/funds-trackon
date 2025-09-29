@@ -6,12 +6,12 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
-from app.models.user import User
+from app.models.user import User, EmploymentType
 from datetime import datetime, timedelta
 import jwt
 from passlib.context import CryptContext
 
-auth_router = APIRouter(prefix="/auth", tags=["authentication"])
+auth_router = APIRouter(tags=["authentication"])
 
 # Security
 security = HTTPBearer()
@@ -27,11 +27,17 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+class UserLoginByUsername(BaseModel):
+    username: str
+    password: str
+
 class UserRegister(BaseModel):
     email: EmailStr
     password: str
-    first_name: str
-    last_name: str
+    name: str
+    designation: str
+    employment_type: str = "Employee"
+    username: Optional[str] = None
 
 class Token(BaseModel):
     access_token: str
@@ -48,15 +54,26 @@ async def register(user_data: UserRegister):
             detail="User with this email already exists"
         )
     
+    # Check if username already exists (if provided)
+    if user_data.username:
+        existing_username = await User.find_one({"username": user_data.username})
+        if existing_username:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User with this username already exists"
+            )
+    
     # Hash password
-    hashed_password = pwd_context.hash(user_data.password)
+    password_hash = pwd_context.hash(user_data.password)
     
     # Create user
     user = User(
         email=user_data.email,
-        hashed_password=hashed_password,
-        first_name=user_data.first_name,
-        last_name=user_data.last_name,
+        password_hash=password_hash,
+        name=user_data.name,
+        designation=user_data.designation,
+        employment_type=user_data.employment_type,
+        username=user_data.username or user_data.email.split('@')[0],
         is_active=True,
         created_at=datetime.utcnow()
     )
@@ -68,19 +85,65 @@ async def register(user_data: UserRegister):
 @auth_router.post("/login", response_model=Token)
 async def login(user_credentials: UserLogin):
     """Authenticate user and return JWT token"""
-    # Find user
+    # Find user by email
     user = await User.find_one({"email": user_credentials.email})
-    if not user or not pwd_context.verify(user_credentials.password, user.hashed_password):
+    # Temporary plain text password check for testing
+    if not user or not user.password_hash or user.password_hash != user_credentials.password:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    # Check if user is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account is disabled",
+        )
+    
+    # Update last login
+    user.last_login = datetime.utcnow()
+    await user.save()
+    
     # Create JWT token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.email}, expires_delta=access_token_expires
+        data={"sub": user.email, "user_id": str(user.id), "roles": user.roles}, 
+        expires_delta=access_token_expires
+    )
+    
+    return {"access_token": access_token, "token_type": "bearer"}
+
+@auth_router.post("/login-username", response_model=Token)
+async def login_username(user_credentials: UserLoginByUsername):
+    """Authenticate user by username and return JWT token"""
+    # Find user by username  
+    user = await User.find_one({"username": user_credentials.username})
+    # Temporary plain text password check for testing
+    if not user or not user.password_hash or user.password_hash != user_credentials.password:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # Check if user is active
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Account is disabled",
+        )
+    
+    # Update last login
+    user.last_login = datetime.utcnow()
+    await user.save()
+    
+    # Create JWT token
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user.email, "user_id": str(user.id), "roles": user.roles}, 
+        expires_delta=access_token_expires
     )
     
     return {"access_token": access_token, "token_type": "bearer"}

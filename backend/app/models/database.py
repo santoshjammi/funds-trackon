@@ -55,6 +55,7 @@ async def init_db():
         from app.models.task import Task
         from app.models.tracker import Tracker
         from app.models.organization import Organization
+        from app.models.meeting import Meeting
         
         # Initialize Beanie with document models
         await init_beanie(
@@ -66,7 +67,8 @@ async def init_db():
                 Opportunity,
                 Task,
                 Tracker,
-                Organization
+                Organization,
+                Meeting
             ]
         )
         

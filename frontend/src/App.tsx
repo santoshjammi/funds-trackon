@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { contactsApi, fundraisingApi, usersApi, organizationsApi, healthCheck, Contact, Fundraising, User, Organization } from './services/api';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import MeetingManager from './components/MeetingManager';
+import Login from './components/Login';
+import UserProfile from './components/UserProfile';
 
-function App() {
-  const [activeView, setActiveView] = useState<'contacts' | 'contact-detail' | 'organizations' | 'organization-detail' | 'fundraising' | 'fundraising-detail' | 'users' | 'user-detail'>('organizations');
+const AppContent: React.FC = () => {
+  const { isAuthenticated, loading: authLoading, login, logout } = useAuth();
+  const [activeView, setActiveView] = useState<'contacts' | 'contact-detail' | 'organizations' | 'organization-detail' | 'fundraising' | 'fundraising-detail' | 'users' | 'user-detail' | 'user-profile'>('organizations');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [fundraising, setFundraising] = useState<Fundraising[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -28,6 +33,9 @@ function App() {
   const [isUserEditMode, setIsUserEditMode] = useState<boolean>(false);
   const [userEditFormData, setUserEditFormData] = useState<User | null>(null);
   const [showUserDeleteConfirm, setShowUserDeleteConfirm] = useState<boolean>(false);
+  
+  // Current logged in user state (for profile view)
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   
   // Search and sort state for contacts
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -108,6 +116,25 @@ function App() {
       fetchData();
     }
   }, [activeView, backendStatus]);
+
+  // Fetch current user data when authenticated
+  useEffect(() => {
+    if (isAuthenticated && backendStatus === 'connected' && !currentUser) {
+      // For now, use the first user as current user (mock)
+      // In a real app, you'd decode the JWT or have a /me endpoint
+      const fetchCurrentUser = async () => {
+        try {
+          const userData = await usersApi.getAll();
+          if (userData.length > 0) {
+            setCurrentUser(userData[0]); // Use first user as current user for demo
+          }
+        } catch (error) {
+          console.error('Failed to fetch current user:', error);
+        }
+      };
+      fetchCurrentUser();
+    }
+  }, [isAuthenticated, backendStatus, currentUser]);
 
   const renderBackendStatus = () => {
     switch (backendStatus) {
@@ -387,7 +414,7 @@ function App() {
       <div className="flex items-center space-x-3">
         {icon && (
           <div className="flex-shrink-0">
-            <span className="inline-block w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center">
+            <span className="w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center">
               {icon}
             </span>
           </div>
@@ -728,7 +755,7 @@ function App() {
               <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Notes</h3>
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0">
-                  <span className="inline-block w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center">
+                  <span className="w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center">
                     📝
                   </span>
                 </div>
@@ -1071,7 +1098,7 @@ function App() {
       <div className="flex items-center space-x-3">
         {icon && (
           <div className="flex-shrink-0">
-            <span className="inline-block w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center">
+            <span className="w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center">
               {icon}
             </span>
           </div>
@@ -1349,7 +1376,7 @@ function App() {
       return (
         <div className="flex items-start space-x-3">
           <div className="flex-shrink-0">
-            <span className="inline-block w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center">
+            <span className="w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center">
               {icon || '📝'}
             </span>
           </div>
@@ -1465,7 +1492,7 @@ function App() {
                 {/* Employment Type */}
                 <div className="flex items-start space-x-3">
                   <div className="flex-shrink-0">
-                    <span className="inline-block w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center">
+                    <span className="w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center">
                       👔
                     </span>
                   </div>
@@ -1504,7 +1531,7 @@ function App() {
                 {/* User Status */}
                 <div className="flex items-start space-x-3">
                   <div className="flex-shrink-0">
-                    <span className="inline-block w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center">
+                    <span className="w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center">
                       {selectedUser.is_active ? '✅' : '❌'}
                     </span>
                   </div>
@@ -1525,7 +1552,7 @@ function App() {
                 {/* User Roles */}
                 <div className="flex items-start space-x-3">
                   <div className="flex-shrink-0">
-                    <span className="inline-block w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center">
+                    <span className="w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center">
                       👑
                     </span>
                   </div>
@@ -1548,7 +1575,7 @@ function App() {
               <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Notes</h3>
               <div className="flex items-start space-x-3">
                 <div className="flex-shrink-0">
-                  <span className="inline-block w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center">
+                  <span className="w-8 h-8 bg-gray-100 text-gray-600 rounded-full flex items-center justify-center">
                     📝
                   </span>
                 </div>
@@ -1621,6 +1648,40 @@ function App() {
             </div>
           </div>
         )}
+      </div>
+    );
+  };
+
+  const renderUserProfile = () => {
+    if (!currentUser) {
+      return (
+        <div className="text-center py-8">
+          <p className="text-gray-600">Loading user profile...</p>
+        </div>
+      );
+    }
+
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">My Profile</h2>
+          <button
+            onClick={() => setActiveView('users')}
+            className="text-blue-600 hover:text-blue-800"
+          >
+            ← Back to Users
+          </button>
+        </div>
+        
+        <UserProfile 
+          user={currentUser}
+          onUserUpdate={(updatedUser) => {
+            setCurrentUser(updatedUser);
+            // Also update in users list if present
+            setUsers(users.map(u => u.id === updatedUser.id ? updatedUser : u));
+          }}
+          onError={(error) => setError(error)}
+        />
       </div>
     );
   };
@@ -2234,6 +2295,20 @@ function App() {
           </div>
         </div>
 
+        {/* Meetings section for this fundraising campaign */}
+        <div className="mt-8">
+          <div className="px-6 py-4 bg-gray-50 border border-gray-200 rounded-t-lg">
+            <h3 className="text-lg font-medium text-gray-900">Meetings & Recordings</h3>
+          </div>
+          <div className="p-4 bg-white border border-gray-200 border-t-0 rounded-b-lg">
+            {selectedFundraising?.id ? (
+              <MeetingManager fundraisingId={selectedFundraising.id} />
+            ) : (
+              <div className="text-sm text-gray-600">Select a fundraising campaign to manage its meetings.</div>
+            )}
+          </div>
+        </div>
+
         {/* Delete Confirmation Dialog */}
         {showFundraisingDeleteConfirm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -2518,21 +2593,72 @@ function App() {
         return renderUsers();
       case 'user-detail':
         return renderUserDetail();
+      case 'user-profile':
+        return renderUserProfile();
       default:
         return renderOrganizations();
     }
   };
 
+  // Handle authentication loading
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show login if not authenticated
+  if (!isAuthenticated) {
+    return (
+      <Login 
+        onLogin={login}
+        onError={(error) => setError(error)}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
         <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            TNIFMC Lead Management System
-          </h1>
-          <p className="text-xl text-gray-600">
-            Investment tracking and lead management platform
-          </p>
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex-1"></div>
+            <div className="flex-1 text-center">
+              <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                TNIFMC Lead Management System
+              </h1>
+              <p className="text-xl text-gray-600">
+                Investment tracking and lead management platform
+              </p>
+            </div>
+            <div className="flex-1 flex justify-end">
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => setActiveView('user-profile')}
+                  className="text-gray-600 hover:text-gray-900"
+                  title="User Profile"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </button>
+                <button
+                  onClick={logout}
+                  className="text-gray-600 hover:text-gray-900"
+                  title="Logout"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
         </header>
         
         {renderBackendStatus()}
@@ -2553,6 +2679,14 @@ function App() {
       </div>
     </div>
   );
-}
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+};
 
 export default App;

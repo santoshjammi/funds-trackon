@@ -8,8 +8,12 @@ from pydantic import BaseModel, EmailStr
 from app.models.user import User, UserRole, EmploymentType
 from beanie import PydanticObjectId
 from datetime import datetime
+from passlib.context import CryptContext
 
 user_router = APIRouter(tags=["users"])
+
+# Password management
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Response models
 class UserResponse(BaseModel):
@@ -186,3 +190,77 @@ async def get_users_by_role(role: UserRole):
         ]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching users by role: {str(e)}")
+
+
+# Password management models
+class SetPasswordRequest(BaseModel):
+    password: str
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str
+    new_password: str
+
+
+@user_router.post("/{user_id}/set-password", response_model=dict)
+async def set_user_password(user_id: str, password_data: SetPasswordRequest):
+    """Set password for a user (admin function)"""
+    try:
+        if not PydanticObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID format")
+            
+        user = await User.get(PydanticObjectId(user_id))
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Hash the new password
+        password_hash = pwd_context.hash(password_data.password)
+        user.password_hash = password_hash
+        user.updated_at = datetime.utcnow()
+        await user.save()
+        
+        return {"message": "Password set successfully", "id": str(user.id)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error setting password: {str(e)}")
+
+
+@user_router.post("/{user_id}/change-password", response_model=dict)
+async def change_user_password(user_id: str, password_data: ChangePasswordRequest):
+    """Change password for a user (requires current password)"""
+    try:
+        if not PydanticObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID format")
+            
+        user = await User.get(PydanticObjectId(user_id))
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        # Verify current password
+        if not user.password_hash or not pwd_context.verify(password_data.current_password, user.password_hash):
+            raise HTTPException(status_code=401, detail="Current password is incorrect")
+        
+        # Hash the new password
+        password_hash = pwd_context.hash(password_data.new_password)
+        user.password_hash = password_hash
+        user.updated_at = datetime.utcnow()
+        await user.save()
+        
+        return {"message": "Password changed successfully", "id": str(user.id)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error changing password: {str(e)}")
+
+
+@user_router.get("/{user_id}/has-password", response_model=dict)
+async def check_user_has_password(user_id: str):
+    """Check if user has a password set"""
+    try:
+        if not PydanticObjectId.is_valid(user_id):
+            raise HTTPException(status_code=400, detail="Invalid user ID format")
+            
+        user = await User.get(PydanticObjectId(user_id))
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        has_password = bool(user.password_hash)
+        return {"user_id": str(user.id), "has_password": has_password}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error checking password: {str(e)}")
