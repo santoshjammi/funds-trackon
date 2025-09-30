@@ -6,10 +6,12 @@ from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel
 from app.models.fundraising import Fundraising, FundraisingStatus, InvestorType
+from app.utils.config import get_settings
 from beanie import PydanticObjectId
 from datetime import datetime
 
 fundraising_router = APIRouter(tags=["fundraising"])
+settings = get_settings()
 
 # Response models
 class FundraisingResponse(BaseModel):
@@ -19,8 +21,10 @@ class FundraisingResponse(BaseModel):
     organisation: str
     reference: str
     tnifmc_request_inr_cr: Optional[float]
+    niveshya_request_inr_cr: Optional[float] = None
     investor_type: Optional[str]
     responsibility_tnifmc: str
+    responsibility_niveshya: Optional[str] = None
     feeler_teaser_letter_sent: Optional[bool]
     meetings_detailed_discussions_im_sent: Optional[bool]
     initial_appraisal_evaluation_process_started: Optional[bool]
@@ -61,8 +65,15 @@ class FundraisingUpdate(BaseModel):
 async def create_fundraising_campaign(campaign_data: FundraisingCreate):
     """Create a new fundraising campaign"""
     try:
+        payload = campaign_data.model_dump()
+        # Dual-write: set new fields if provided via legacy names
+        if settings.write_compat_tnifmc_fields:
+            if payload.get("tnifmc_request_inr_cr") is not None and payload.get("niveshya_request_inr_cr") is None:
+                payload["niveshya_request_inr_cr"] = payload["tnifmc_request_inr_cr"]
+            if payload.get("responsibility_tnifmc") and not payload.get("responsibility_niveshya"):
+                payload["responsibility_niveshya"] = payload["responsibility_tnifmc"]
         campaign = Fundraising(
-            **campaign_data.model_dump(),
+            **payload,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow()
         )
@@ -91,15 +102,17 @@ async def get_all_campaigns(
         # Convert to response format
         response = []
         for campaign in campaigns:
-            response.append(FundraisingResponse(
+            resp = FundraisingResponse(
                 id=str(campaign.id),
                 status_open_closed=campaign.status_open_closed,
                 date_of_first_meeting_call=campaign.date_of_first_meeting_call,
                 organisation=campaign.organisation,
                 reference=campaign.reference,
                 tnifmc_request_inr_cr=campaign.tnifmc_request_inr_cr,
+                niveshya_request_inr_cr=getattr(campaign, "niveshya_request_inr_cr", None),
                 investor_type=campaign.investor_type,
                 responsibility_tnifmc=campaign.responsibility_tnifmc,
+                responsibility_niveshya=getattr(campaign, "responsibility_niveshya", None),
                 feeler_teaser_letter_sent=campaign.feeler_teaser_letter_sent,
                 meetings_detailed_discussions_im_sent=campaign.meetings_detailed_discussions_im_sent,
                 initial_appraisal_evaluation_process_started=campaign.initial_appraisal_evaluation_process_started,
@@ -112,7 +125,8 @@ async def get_all_campaigns(
                 contact_id=str(campaign.contact_id) if campaign.contact_id else None,
                 created_at=campaign.created_at,
                 updated_at=campaign.updated_at
-            ))
+            )
+            response.append(resp)
         
         return response
     except Exception as e:
@@ -136,8 +150,10 @@ async def get_campaign(campaign_id: str):
             organisation=campaign.organisation,
             reference=campaign.reference,
             tnifmc_request_inr_cr=campaign.tnifmc_request_inr_cr,
+            niveshya_request_inr_cr=getattr(campaign, "niveshya_request_inr_cr", None),
             investor_type=campaign.investor_type,
             responsibility_tnifmc=campaign.responsibility_tnifmc,
+            responsibility_niveshya=getattr(campaign, "responsibility_niveshya", None),
             feeler_teaser_letter_sent=campaign.feeler_teaser_letter_sent,
             meetings_detailed_discussions_im_sent=campaign.meetings_detailed_discussions_im_sent,
             initial_appraisal_evaluation_process_started=campaign.initial_appraisal_evaluation_process_started,
@@ -166,6 +182,12 @@ async def update_campaign(campaign_id: str, update_data: FundraisingUpdate):
             raise HTTPException(status_code=404, detail="Campaign not found")
         
         update_dict = update_data.dict(exclude_unset=True)
+        # Dual-write: copy legacy fields to new names on update
+        if settings.write_compat_tnifmc_fields:
+            if update_dict.get("tnifmc_request_inr_cr") is not None and update_dict.get("niveshya_request_inr_cr") is None:
+                update_dict["niveshya_request_inr_cr"] = update_dict["tnifmc_request_inr_cr"]
+            if update_dict.get("responsibility_tnifmc") and not update_dict.get("responsibility_niveshya"):
+                update_dict["responsibility_niveshya"] = update_dict["responsibility_tnifmc"]
         if update_dict:
             for field, value in update_dict.items():
                 setattr(campaign, field, value)

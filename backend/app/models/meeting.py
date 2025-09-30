@@ -79,7 +79,8 @@ class Meeting(Document):
 
     # Attendees
     attendees: List[MeetingAttendee] = Field(default_factory=list, description="List of meeting attendees")
-    tnifmc_representatives: List[str] = Field(default_factory=list, description="Niveshya team who attended")
+    tnifmc_representatives: List[str] = Field(default_factory=list, description="Niveshya team who attended (legacy field name)")
+    niveshya_representatives: Optional[List[str]] = Field(default=None, description="Niveshya team who attended")
 
     # Audio recording
     audio_recording: Optional[AudioRecording] = Field(None, description="Audio recording information")

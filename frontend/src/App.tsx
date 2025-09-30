@@ -2223,7 +2223,7 @@ const AppContent: React.FC = () => {
             {renderField('Niveshya Request (₹ Cr)', selectedFundraising.tnifmc_request_inr_cr, 'tnifmc_request_inr_cr', 'number')}
             {renderField('Commitment Amount (₹ Cr)', selectedFundraising.commitment_amount_inr_cr, 'commitment_amount_inr_cr', 'number')}
             {renderField('Investor Type', selectedFundraising.investor_type, 'investor_type')}
-            {renderField('Responsible (TNIFMC)', selectedFundraising.responsibility_tnifmc, 'responsibility_tnifmc')}
+            {renderField('Responsible (Niveshya)', selectedFundraising.responsibility_tnifmc, 'responsibility_tnifmc')}
             {renderField('Current Status', selectedFundraising.current_status, 'current_status')}
             {renderField('First Meeting Date', selectedFundraising.date_of_first_meeting_call, 'date_of_first_meeting_call')}
             
@@ -2630,7 +2630,7 @@ const AppContent: React.FC = () => {
             <div className="flex-1"></div>
             <div className="flex-1 text-center">
               <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                TNIFMC Lead Management System
+                Niveshya Lead Management System
               </h1>
               <p className="text-xl text-gray-600">
                 Investment tracking and lead management platform
@@ -2674,7 +2674,7 @@ const AppContent: React.FC = () => {
         {renderContent()}
         
         <footer className="mt-12 text-center text-gray-500">
-          <p>© 2025 TNIFMC Lead Management System</p>
+          <p>© 2025 Niveshya Lead Management System</p>
         </footer>
       </div>
     </div>

@@ -37,9 +37,13 @@ class Fundraising(Document):
     date_of_first_meeting_call: Optional[datetime] = Field(None, alias="Date_of_first_meeting__call")
     organisation: str = Field(..., description="Organization name")
     reference: str = Field(..., description="Reference source")
-    tnifmc_request_inr_cr: Optional[float] = Field(None, alias="TNIFMC_Request_INR_Cr", description="Requested amount in INR Crores")
+    tnifmc_request_inr_cr: Optional[float] = Field(None, alias="TNIFMC_Request_INR_Cr", description="Requested amount in INR Crores (legacy)")
+    # New Niveshya field (dual-read/write period)
+    niveshya_request_inr_cr: Optional[float] = Field(None, description="Requested amount in INR Crores")
     investor_type: Optional[InvestorType] = Field(None, alias="Investor_Type")
-    responsibility_tnifmc: str = Field(..., alias="Responsibility_TNIFMC", description="Responsible team member at Niveshya")
+    responsibility_tnifmc: str = Field(..., alias="Responsibility_TNIFMC", description="Responsible team member at Niveshya (legacy field name)")
+    # New Niveshya field (dual-read/write period)
+    responsibility_niveshya: Optional[str] = Field(None, description="Responsible team member at Niveshya")
     
     # Process tracking booleans
     feeler_teaser_letter_sent: bool = Field(False, alias="FeelerTeaserLetter_Sent")
@@ -68,6 +72,7 @@ class Fundraising(Document):
             "status_open_closed",
             "investor_type",
             "responsibility_tnifmc",
+            "responsibility_niveshya",
             "contact_id",
             [("organisation", 1), ("status_open_closed", 1)]
         ]

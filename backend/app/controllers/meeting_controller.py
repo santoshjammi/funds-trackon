@@ -17,8 +17,10 @@ from app.models.contact import Contact
 from app.models.user import User
 from app.controllers.auth_controller import get_current_user
 from app.services.audio_processing_service import AudioProcessingService
+from app.utils.config import get_settings
 
 meeting_router = APIRouter(tags=["meetings"])
+settings = get_settings()
 
 # Audio upload configuration
 UPLOAD_DIR = "uploads/audio"
@@ -48,7 +50,8 @@ class MeetingCreateRequest(BaseModel):
     is_virtual: bool = False
     agenda: Optional[str] = None
     attendees: List[MeetingAttendee] = []
-    tnifmc_representatives: List[str] = []
+    tnifmc_representatives: List[str] = []  # legacy field name for compatibility
+    niveshya_representatives: Optional[List[str]] = None
 
 class MeetingUpdateRequest(BaseModel):
     title: Optional[str] = None
@@ -64,7 +67,8 @@ class MeetingUpdateRequest(BaseModel):
     action_items: Optional[str] = None
     notes: Optional[str] = None
     attendees: Optional[List[MeetingAttendee]] = None
-    tnifmc_representatives: Optional[List[str]] = None
+    tnifmc_representatives: Optional[List[str]] = None  # legacy
+    niveshya_representatives: Optional[List[str]] = None
 
 @meeting_router.post("/", response_model=dict)
 async def create_meeting(
@@ -91,6 +95,8 @@ async def create_meeting(
             )
 
     # Create meeting
+    # Normalize representatives (prefer new field if provided)
+    reps_new = meeting_data.niveshya_representatives if meeting_data.niveshya_representatives is not None else meeting_data.tnifmc_representatives
     meeting = Meeting(
         title=meeting_data.title,
         meeting_type=meeting_data.meeting_type,
@@ -102,7 +108,8 @@ async def create_meeting(
         is_virtual=meeting_data.is_virtual,
         agenda=meeting_data.agenda,
         attendees=meeting_data.attendees,
-        tnifmc_representatives=meeting_data.tnifmc_representatives,
+        tnifmc_representatives=reps_new or [],
+        niveshya_representatives=reps_new or [],
         created_by=str(current_user.id)
     )
 
@@ -201,6 +208,11 @@ async def update_meeting(
 
     # Update fields if provided
     update_dict = update_data.dict(exclude_unset=True)
+    # Normalize representatives
+    if "niveshya_representatives" in update_dict and update_dict["niveshya_representatives"] is not None:
+        update_dict["tnifmc_representatives"] = update_dict.get("niveshya_representatives")
+    elif "tnifmc_representatives" in update_dict and update_dict["tnifmc_representatives"] is not None:
+        update_dict["niveshya_representatives"] = update_dict.get("tnifmc_representatives")
     for field, value in update_dict.items():
         setattr(meeting, field, value)
 

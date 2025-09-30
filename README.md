@@ -251,6 +251,30 @@ npm test
 - Deploy to Netlify/Vercel/S3
 - Configure API base URL
 
+## ⚙️ Centralized port settings (.env)
+
+The Docker setup reads ports and CORS from the root `.env` file:
+
+- `FRONTEND_PORT` (default 3002)
+- `BACKEND_PORT` (default 8001; container still serves 8000 internally)
+- `MONGO_PORT` (default 27019; container port remains 27017)
+- `CORS_ORIGINS` JSON array (e.g., `["http://localhost:3002","http://127.0.0.1:3002"]`)
+
+To change ports:
+
+1. Edit `.env` at the repository root
+2. Recreate the stack
+
+```bash
+docker compose down
+docker compose up -d --build
+```
+
+Then access:
+
+- Frontend: <http://localhost:${FRONTEND_PORT}>
+- Backend API docs: <http://localhost:${BACKEND_PORT}/docs>
+
 ## 🤝 Contributing
 
 1. Follow SOLID principles for backend development

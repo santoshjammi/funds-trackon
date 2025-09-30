@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
         await close_mongo_connection()
 
 app = FastAPI(
-    title="TNIFMC Lead Management System",
+    title="Niveshya Lead Management System",
     description="Investment tracking and lead management system",
     version="1.0.0",
     lifespan=lifespan
@@ -50,7 +50,7 @@ app.include_router(user_router, prefix="/api/users", tags=["users"])
 async def root():
     """Health check endpoint"""
     return {
-        "message": "TNIFMC Lead Management System API", 
+        "message": "Niveshya Lead Management System API", 
         "status": "healthy",
         "database": "MongoDB",
         "version": "1.0.0"

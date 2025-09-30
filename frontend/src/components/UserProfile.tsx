@@ -62,8 +62,12 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onUserUpdate, onError }
       setHasPassword(true);
       onError(''); // Clear any previous errors
     } catch (error) {
-      onError('Failed to update password. Please try again.');
       console.error('Password update error:', error);
+      // Show the actual error message if available
+      const errorMessage = error instanceof Error ? error.message : 
+                          (error as any)?.message || 
+                          'Failed to update password. Please try again.';
+      onError(`Password update failed: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

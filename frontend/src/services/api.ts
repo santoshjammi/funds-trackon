@@ -1,5 +1,9 @@
 // API configuration and base setup
-const API_BASE_URL = 'http://localhost:8000';
+// Prefer environment override; default to same-origin '' so endpoints like '/api/...'
+// are not double-prefixed when behind Nginx proxying '/api' to backend.
+const API_BASE_URL =
+  (typeof process !== 'undefined' && process.env && (process.env.REACT_APP_API_BASE_URL as string))
+  || '';
 
 // Optional auth token reader: localStorage, sessionStorage, then cookie fallback
 export const AUTH_TOKEN_KEYS = ['access_token','token','jwt','jwt_token','auth','authToken','id_token'] as const;
@@ -97,8 +101,10 @@ export interface Fundraising {
   organisation: string;
   reference: string;
   tnifmc_request_inr_cr?: number;
+  niveshya_request_inr_cr?: number; // new field during migration
   investor_type?: string;
   responsibility_tnifmc: string;
+  responsibility_niveshya?: string; // new field during migration
   
   // Process tracking booleans
   feeler_teaser_letter_sent?: boolean;
@@ -216,6 +222,7 @@ export interface MeetingCreateRequest {
   agenda?: string;
   attendees?: MeetingAttendee[];
   tnifmc_representatives?: string[];
+  niveshya_representatives?: string[];
 }
 
 export interface MeetingListItem {
@@ -294,7 +301,9 @@ function parseFilenameFromContentDisposition(header: string | null, fallback: st
 
 // Generic API request function
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  // Join base and endpoint without duplicating slashes
+  const base = API_BASE_URL.replace(/\/+$/, '');
+  const url = `${base}${endpoint}`;
   const openaiKey = (typeof localStorage !== 'undefined') ? localStorage.getItem('openai_api_key') : null;
   
   const config: RequestInit = {
@@ -319,10 +328,23 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     const response = await fetch(url, config);
     
     if (!response.ok) {
+      // Try to get error details from the response
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.detail) {
+          errorMessage = errorData.detail;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch {
+        // If parsing JSON fails, keep the HTTP status message
+      }
+      
       if (response.status === 401 || response.status === 403) {
         throw new Error('Not authenticated or access denied (401/403). Please log in again.');
       }
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(errorMessage);
     }
     
     return await response.json();
@@ -354,8 +376,17 @@ export const contactsApi = {
 
 // Fundraising API functions
 export const fundraisingApi = {
-  getAll: (): Promise<Fundraising[]> => apiRequest<Fundraising[]>('/api/fundraising/'),
-  getById: (id: string): Promise<Fundraising> => apiRequest<Fundraising>(`/api/fundraising/${id}`),
+  getAll: (): Promise<Fundraising[]> => apiRequest<Fundraising[]>('/api/fundraising/').then(items => items.map((c: any) => ({
+    ...c,
+    // prefer new fields if present
+    tnifmc_request_inr_cr: c.niveshya_request_inr_cr ?? c.tnifmc_request_inr_cr,
+    responsibility_tnifmc: c.responsibility_niveshya ?? c.responsibility_tnifmc,
+  }))),
+  getById: (id: string): Promise<Fundraising> => apiRequest<Fundraising>(`/api/fundraising/${id}`).then((c: any) => ({
+    ...c,
+    tnifmc_request_inr_cr: c.niveshya_request_inr_cr ?? c.tnifmc_request_inr_cr,
+    responsibility_tnifmc: c.responsibility_niveshya ?? c.responsibility_tnifmc,
+  })),
   create: (fundraising: Omit<Fundraising, 'id'>): Promise<{message: string, id: string}> =>
     apiRequest<{message: string, id: string}>('/api/fundraising/', {
       method: 'POST',
@@ -469,7 +500,12 @@ export const meetingsApi = {
   create: (req: MeetingCreateRequest): Promise<MeetingCreateResponse> =>
     apiRequest<MeetingCreateResponse>('/api/meetings/', {
       method: 'POST',
-      body: JSON.stringify(req),
+      body: JSON.stringify({
+        ...req,
+        // prefer new field name; keep legacy for compatibility until backend flips
+        tnifmc_representatives: req.niveshya_representatives ?? req.tnifmc_representatives,
+        niveshya_representatives: req.niveshya_representatives ?? req.tnifmc_representatives,
+      }),
     }),
 
   listByFundraising: (fundraisingId: string): Promise<MeetingListItem[]> =>
@@ -571,7 +607,11 @@ export const meetingsApi = {
   update: (meetingId: string, body: Partial<MeetingDetails>): Promise<{message: string}> =>
     apiRequest<{message: string}>(`/api/meetings/${meetingId}`, {
       method: 'PUT',
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        ...body,
+        tnifmc_representatives: (body as any).niveshya_representatives ?? (body as any).tnifmc_representatives,
+        niveshya_representatives: (body as any).niveshya_representatives ?? (body as any).tnifmc_representatives,
+      }),
     }),
 
   // Downloads

@@ -271,7 +271,8 @@ class AudioProcessingService:
             if m.ai_summary:
                 parts.append(f"AI Summary: {truncate(m.ai_summary, 800)}")
             if m.ai_key_points:
-                parts.append(f"AI Key Points: {truncate('\n'.join(m.ai_key_points), 800)}")
+                joined_points = "\n".join(m.ai_key_points)
+                parts.append(f"AI Key Points: {truncate(joined_points, 800)}")
             if m.notes:
                 parts.append(f"Notes: {truncate(m.notes, 800)}")
             # Fallback to transcript if present
