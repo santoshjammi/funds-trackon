@@ -1,6 +1,6 @@
 // Minimal IndexedDB helper for storing audio blobs locally until submission
 
-const DB_NAME = 'tnifmc-audio-db';
+const DB_NAME = 'niveshya-audio-db';
 const STORE = 'recordings';
 const VERSION = 1;
 

@@ -1,4 +1,4 @@
-<!-- Lead Management System for TNIFMC Investment Tracking -->
+<!-- Lead Management System for Niveshya Investment Tracking -->
 <!-- Python REST API backend with SOLID principles and React frontend with TailwindCSS -->
 
 - [x] Verify that the copilot-instructions.md file in the .github directory is created.

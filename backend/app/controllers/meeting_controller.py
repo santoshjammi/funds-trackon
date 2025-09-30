@@ -22,6 +22,7 @@ meeting_router = APIRouter(tags=["meetings"])
 
 # Audio upload configuration
 UPLOAD_DIR = "uploads/audio"
+IMAGES_DIR = "uploads/images"
 ALLOWED_AUDIO_TYPES = [
     "audio/wav", "audio/wave", "audio/x-wav",
     "audio/mpeg", "audio/mp3",
@@ -32,6 +33,9 @@ ALLOWED_AUDIO_TYPES = [
 
 # Ensure upload directory exists
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(IMAGES_DIR, exist_ok=True)
+DUBS_DIR = "uploads/dubs"
+os.makedirs(DUBS_DIR, exist_ok=True)
 
 # Request/Response models
 class MeetingCreateRequest(BaseModel):
@@ -378,6 +382,14 @@ async def download_transcript(
 
 class CustomPromptRequest(BaseModel):
     prompt: str
+    meeting_ids: Optional[List[str]] = None
+
+class InfographicRequest(BaseModel):
+    description: str
+
+class AutoDubRequest(BaseModel):
+    voice: Optional[str] = "alloy"
+    format: Optional[str] = "mp3"
 
 @meeting_router.post("/{meeting_id}/prompt", response_model=dict)
 async def generate_custom_prompt(
@@ -391,6 +403,117 @@ async def generate_custom_prompt(
     service = AudioProcessingService(api_key=x_openai_api_key)
     try:
         result = await service.generate_meeting_insights(meeting_id, request.prompt)
+        return {"message": "Prompt processed", **result}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+@meeting_router.post("/{meeting_id}/infographic", response_model=dict)
+async def generate_infographic(
+    meeting_id: str,
+    request: InfographicRequest,
+    x_openai_api_key: Optional[str] = Header(default=None, alias="X-OpenAI-API-Key"),
+    current_user: User = Depends(get_current_user)
+):
+    """Generate and persist an infographic image for a meeting using AI, saved on local disk."""
+
+    meeting = await Meeting.get(meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
+
+    service = AudioProcessingService(api_key=x_openai_api_key)
+    try:
+        result = await service.generate_infographic_for_meeting(meeting_id, request.description, IMAGES_DIR)
+        # Persist metadata on meeting
+        meeting.infographic_filename = result["filename"]
+        meeting.infographic_description = request.description
+        meeting.infographic_generated_at = datetime.utcnow()
+        await meeting.save()
+
+        return {
+            "message": "Infographic generated",
+            "filename": result["filename"],
+            "url": f"/api/meetings/{meeting_id}/infographic",
+        }
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+@meeting_router.get("/{meeting_id}/infographic")
+async def get_infographic(
+    meeting_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Serve the infographic image for a meeting if it exists."""
+    meeting = await Meeting.get(meeting_id)
+    if not meeting or not meeting.infographic_filename:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Infographic not found")
+
+    file_path = os.path.join(IMAGES_DIR, meeting.infographic_filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Infographic file not found on disk")
+
+    return FileResponse(path=file_path, media_type="image/png", filename=meeting.infographic_filename)
+
+@meeting_router.post("/{meeting_id}/autodub", response_model=dict)
+async def create_autodub(
+    meeting_id: str,
+    request: AutoDubRequest,
+    x_openai_api_key: Optional[str] = Header(default=None, alias="X-OpenAI-API-Key"),
+    current_user: User = Depends(get_current_user)
+):
+    """Create an English dub from the meeting's transcript (auto-translate if needed) and save as audio."""
+    meeting = await Meeting.get(meeting_id)
+    if not meeting:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
+
+    service = AudioProcessingService(api_key=x_openai_api_key)
+    try:
+        result = await service.auto_dub_meeting(meeting_id, target_voice=request.voice or "alloy", audio_format=request.format or "mp3")
+        # Persist already handled in service (filename/text/timestamps)
+        return {"message": "Autodub created", **result}
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+@meeting_router.get("/{meeting_id}/autodub")
+async def get_autodub(
+    meeting_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Serve the autodubbed English audio if it exists."""
+    meeting = await Meeting.get(meeting_id)
+    if not meeting or not meeting.dub_filename:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Autodub not found")
+
+    file_path = os.path.join(DUBS_DIR, meeting.dub_filename)
+    if not os.path.exists(file_path):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Autodub file not found on disk")
+
+    # Determine media type
+    ext = os.path.splitext(meeting.dub_filename)[1].lower()
+    media_type = "audio/mpeg" if ext == ".mp3" else "audio/wav" if ext == ".wav" else "audio/ogg" if ext == ".ogg" else "application/octet-stream"
+    return FileResponse(path=file_path, media_type=media_type, filename=meeting.dub_filename)
+
+@meeting_router.post("/fundraising/{fundraising_id}/prompt", response_model=dict)
+async def generate_campaign_prompt(
+    fundraising_id: str,
+    request: CustomPromptRequest,
+    x_openai_api_key: Optional[str] = Header(default=None, alias="X-OpenAI-API-Key"),
+    current_user: User = Depends(get_current_user)
+):
+    """Run a custom prompt across all meetings for a fundraising campaign.
+    Optionally include a subset of meeting_ids to restrict the context.
+    """
+
+    # Verify fundraising campaign exists
+    fundraising = await Fundraising.get(fundraising_id)
+    if not fundraising:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Fundraising campaign not found"
+        )
+
+    service = AudioProcessingService(api_key=x_openai_api_key)
+    try:
+        result = await service.generate_campaign_insights(fundraising_id, request.prompt, request.meeting_ids)
         return {"message": "Prompt processed", **result}
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

@@ -30,8 +30,13 @@ const MeetingManager: React.FC<Props> = ({ fundraisingId: fundraisingIdProp }) =
   const [processing, setProcessing] = useState(false);
   const [prompt, setPrompt] = useState('');
   const [promptResult, setPromptResult] = useState<string | null>(null);
+  const [promptScope, setPromptScope] = useState<'meeting' | 'campaign'>('meeting');
   const [notesDraft, setNotesDraft] = useState<string>('');
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [infographicDesc, setInfographicDesc] = useState<string>('Key points visual summary of this meeting');
+  const [infographicLoading, setInfographicLoading] = useState<boolean>(false);
+  const [dubLoading, setDubLoading] = useState<boolean>(false);
+  const [dubVoice, setDubVoice] = useState<string>('alloy');
   // OpenAI API key handling (stored locally)
   const [openaiKey, setOpenaiKey] = useState<string>(() => {
     try { return localStorage.getItem('openai_api_key') || ''; } catch { return ''; }
@@ -215,13 +220,52 @@ const MeetingManager: React.FC<Props> = ({ fundraisingId: fundraisingIdProp }) =
     }
   };
 
+  const handleGenerateInfographic = async () => {
+    if (!selectedMeetingId) return;
+    setInfographicLoading(true);
+    setError(null);
+    try {
+      await meetingsApi.generateInfographic(selectedMeetingId, infographicDesc || 'Visual summary of the meeting');
+      await loadMeetingDetails(selectedMeetingId);
+      setSuccessMsg('Infographic generated');
+      setTimeout(() => setSuccessMsg(null), 2000);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to generate infographic');
+    } finally {
+      setInfographicLoading(false);
+    }
+  };
+
+  const handleGenerateDub = async () => {
+    if (!selectedMeetingId) return;
+    setDubLoading(true);
+    setError(null);
+    try {
+      await meetingsApi.generateDub(selectedMeetingId, dubVoice, 'mp3');
+      await loadMeetingDetails(selectedMeetingId);
+      setSuccessMsg('Autodub generated');
+      setTimeout(() => setSuccessMsg(null), 2000);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to generate autodub');
+    } finally {
+      setDubLoading(false);
+    }
+  };
+
   const handleRunPrompt = async () => {
-    if (!selectedMeetingId || !prompt.trim()) return;
+    if (!prompt.trim()) return;
     setProcessing(true);
     setError(null);
     setPromptResult(null);
     try {
-      const res = await meetingsApi.runPrompt(selectedMeetingId, prompt.trim());
+      let res: { result?: string };
+      if (promptScope === 'campaign') {
+        if (!fundraisingId) throw new Error('Missing fundraising ID');
+        res = await meetingsApi.runCampaignPrompt(fundraisingId, prompt.trim());
+      } else {
+        if (!selectedMeetingId) throw new Error('Select a meeting');
+        res = await meetingsApi.runPrompt(selectedMeetingId, prompt.trim());
+      }
       setPromptResult(res.result || '');
     } catch (e: any) {
       setError(e?.message || 'Prompt failed');
@@ -432,6 +476,26 @@ const MeetingManager: React.FC<Props> = ({ fundraisingId: fundraisingIdProp }) =
             >
               Download Transcript
             </button>
+            <div className="ml-2 flex items-center gap-2">
+              <select
+                className="border rounded px-2 py-1 text-sm"
+                value={dubVoice}
+                onChange={(e) => setDubVoice(e.target.value)}
+                aria-label="Autodub voice"
+              >
+                <option value="alloy">Alloy</option>
+                <option value="verse">Verse</option>
+                <option value="aria">Aria</option>
+              </select>
+              <button
+                className="px-3 py-2 bg-teal-600 text-white rounded disabled:opacity-50"
+                disabled={dubLoading || !meetingDetails?.transcript}
+                onClick={handleGenerateDub}
+                title={!meetingDetails?.transcript ? 'Process audio to generate transcript first' : 'Generate English dub'}
+              >
+                {dubLoading ? 'Autodubbing…' : 'Autodub to English'}
+              </button>
+            </div>
           </div>
           {meetingDetails && (
             <div className="mt-6 space-y-4">
@@ -519,6 +583,27 @@ const MeetingManager: React.FC<Props> = ({ fundraisingId: fundraisingIdProp }) =
               <div className="border-t pt-4">
                 <h4 className="font-semibold text-gray-800 mb-2">Ask a custom question</h4>
                 <div className="grid gap-2">
+                  <div className="flex items-center gap-3">
+                    <label className="text-sm text-gray-700">Scope:</label>
+                    <label className="inline-flex items-center gap-1 text-sm">
+                      <input
+                        type="radio"
+                        name="promptScope"
+                        checked={promptScope === 'meeting'}
+                        onChange={() => setPromptScope('meeting')}
+                      />
+                      This meeting only
+                    </label>
+                    <label className="inline-flex items-center gap-1 text-sm">
+                      <input
+                        type="radio"
+                        name="promptScope"
+                        checked={promptScope === 'campaign'}
+                        onChange={() => setPromptScope('campaign')}
+                      />
+                      All meetings in this campaign
+                    </label>
+                  </div>
                   <textarea
                     id="customPrompt"
                     className="w-full border rounded px-3 py-2"
@@ -531,17 +616,85 @@ const MeetingManager: React.FC<Props> = ({ fundraisingId: fundraisingIdProp }) =
                     <button
                       className="px-3 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
                       onClick={handleRunPrompt}
-                      disabled={processing || !meetingDetails?.transcript || !prompt.trim()}
+                      disabled={
+                        processing ||
+                        !prompt.trim() ||
+                        (promptScope === 'meeting' && !meetingDetails?.transcript)
+                      }
                     >
                       {processing ? 'Running…' : 'Run Prompt'}
                     </button>
-                    {!meetingDetails?.transcript && (
+                    {promptScope === 'meeting' && !meetingDetails?.transcript && (
                       <span className="text-sm text-gray-600">Process audio first to generate transcript.</span>
+                    )}
+                    {promptScope === 'campaign' && meetings.length === 0 && (
+                      <span className="text-sm text-gray-600">No meetings found in this campaign.</span>
                     )}
                   </div>
                   {promptResult && (
                     <div className="text-sm text-gray-800 p-3 bg-gray-50 rounded border border-gray-200 whitespace-pre-wrap">
                       {promptResult}
+                    </div>
+                  )}
+                </div>
+              </div>
+              {meetingDetails?.dub_url && (
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold text-gray-800 mb-2">English Dub</h4>
+                  <div className="flex items-center gap-2 mb-2 text-sm text-gray-600">
+                    <span>Voice: {meetingDetails.dub_voice || 'n/a'}</span>
+                    {meetingDetails.dub_generated_at && (
+                      <span>· Generated: {new Date(meetingDetails.dub_generated_at).toLocaleString()}</span>
+                    )}
+                  </div>
+                  <audio controls src={meetingDetails.dub_url} className="w-full" />
+                  <div className="mt-2">
+                    <button
+                      className="px-3 py-2 bg-gray-100 text-gray-800 rounded"
+                      onClick={async () => {
+                        if (!selectedMeetingId) return;
+                        try {
+                          const { blob, filename } = await meetingsApi.downloadDub(selectedMeetingId);
+                          downloadBlob(blob, filename);
+                        } catch (e: any) {
+                          setError(e?.message || 'Dub download failed');
+                        }
+                      }}
+                    >
+                      Download Dub
+                    </button>
+                  </div>
+                </div>
+              )}
+              <div className="border-t pt-4">
+                <h4 className="font-semibold text-gray-800 mb-2">Infographic</h4>
+                <div className="grid gap-2">
+                  <input
+                    type="text"
+                    className="w-full border rounded px-3 py-2"
+                    placeholder="Describe the infographic to generate (optional)"
+                    value={infographicDesc}
+                    onChange={(e) => setInfographicDesc(e.target.value)}
+                  />
+                  <div className="flex items-center gap-2">
+                    <button
+                      className="px-3 py-2 bg-teal-600 text-white rounded disabled:opacity-50"
+                      onClick={handleGenerateInfographic}
+                      disabled={infographicLoading}
+                    >
+                      {infographicLoading ? 'Generating…' : 'Generate Infographic'}
+                    </button>
+                    {meetingDetails?.infographic_generated_at && (
+                      <span className="text-xs text-gray-600">Last generated: {new Date(meetingDetails.infographic_generated_at).toLocaleString()}</span>
+                    )}
+                  </div>
+                  {meetingDetails?.infographic_url && (
+                    <div className="mt-2">
+                      <img
+                        src={meetingDetails.infographic_url}
+                        alt={meetingDetails.infographic_description || 'Meeting infographic'}
+                        className="max-h-96 border rounded"
+                      />
                     </div>
                   )}
                 </div>

@@ -262,6 +262,14 @@ export interface MeetingDetails {
   ai_action_items?: string[] | string | null;
   ai_risks?: string[] | string | null;
   ai_next_steps?: string[] | string | null;
+  // Infographic fields
+  infographic_url?: string | null;
+  infographic_description?: string | null;
+  infographic_generated_at?: string | null;
+  // Dub fields
+  dub_url?: string | null;
+  dub_generated_at?: string | null;
+  dub_voice?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -468,7 +476,42 @@ export const meetingsApi = {
     apiRequest<MeetingListItem[]>(`/api/meetings/fundraising/${fundraisingId}`),
 
   details: (meetingId: string): Promise<MeetingDetails> =>
-    apiRequest<MeetingDetails>(`/api/meetings/${meetingId}`),
+    apiRequest<any>(`/api/meetings/${meetingId}`).then((raw) => {
+      const m = raw?.meeting || raw;
+      const id = m.id || m._id || meetingId;
+      const details: MeetingDetails = {
+        id,
+        title: m.title,
+        meeting_type: m.meeting_type,
+        status: m.status,
+        scheduled_date: m.scheduled_date,
+        actual_date: m.actual_date,
+        duration_minutes: m.duration_minutes,
+        location: m.location,
+        is_virtual: m.is_virtual,
+        agenda: m.agenda,
+        notes: m.notes ?? null,
+        attendees: m.attendees,
+        tnifmc_representatives: m.tnifmc_representatives,
+        has_audio: Boolean(m.audio_recording),
+        audio_filename: m.audio_recording?.filename,
+        audio_processing_status: m.audio_recording?.processing_status ?? null,
+        transcript: m.audio_recording?.transcript ?? null,
+        ai_summary: m.ai_summary ?? null,
+        ai_action_items: m.ai_action_items ?? null,
+        ai_risks: m.ai_insights?.risks_concerns ?? null,
+        ai_next_steps: m.ai_insights?.follow_up_needed ?? null,
+        infographic_url: m.infographic_filename ? `${API_BASE_URL}/api/meetings/${id}/infographic` : null,
+        infographic_description: m.infographic_description ?? null,
+        infographic_generated_at: m.infographic_generated_at ?? null,
+        dub_url: m.dub_filename ? `${API_BASE_URL}/api/meetings/${id}/autodub` : null,
+        dub_generated_at: m.dub_generated_at ?? null,
+        dub_voice: m.dub_voice ?? null,
+        created_at: m.created_at,
+        updated_at: m.updated_at,
+      };
+      return details;
+    }),
 
   uploadAudio: async (meetingId: string, file: File): Promise<{message: string; meeting_id: string; audio_filename: string; file_size: number; processing_status: string}> => {
     const url = `${API_BASE_URL}/api/meetings/${meetingId}/audio`;
@@ -501,11 +544,29 @@ export const meetingsApi = {
       method: 'POST',
     }),
 
-  runPrompt: (meetingId: string, prompt: string): Promise<PromptResponse> =>
-    apiRequest<PromptResponse>(`/api/meetings/${meetingId}/prompt`, {
+  runPrompt: async (meetingId: string, prompt: string): Promise<PromptResponse> => {
+    // The backend returns { message, response } for custom prompt. Normalize to { result } for UI.
+    const raw: any = await apiRequest<any>(`/api/meetings/${meetingId}/prompt`, {
       method: 'POST',
       body: JSON.stringify({ prompt }),
-    }),
+    });
+    return {
+      message: raw?.message ?? 'OK',
+      result: raw?.result ?? raw?.response,
+      status: raw?.status,
+    };
+  },
+  runCampaignPrompt: async (fundraisingId: string, prompt: string, meetingIds?: string[]): Promise<PromptResponse> => {
+    const raw: any = await apiRequest<any>(`/api/meetings/fundraising/${fundraisingId}/prompt`, {
+      method: 'POST',
+      body: JSON.stringify({ prompt, meeting_ids: meetingIds && meetingIds.length ? meetingIds : undefined }),
+    });
+    return {
+      message: raw?.message ?? 'OK',
+      result: raw?.result ?? raw?.response,
+      status: raw?.status,
+    };
+  },
   
   update: (meetingId: string, body: Partial<MeetingDetails>): Promise<{message: string}> =>
     apiRequest<{message: string}>(`/api/meetings/${meetingId}`, {
@@ -536,6 +597,30 @@ export const meetingsApi = {
     if (!res.ok) throw new Error(`Download failed: ${res.status}`);
     const cd = res.headers.get('content-disposition');
     const filename = parseFilenameFromContentDisposition(cd, 'meeting_transcript.txt');
+    const blob = await res.blob();
+    return { blob, filename };
+  },
+
+  generateInfographic: (meetingId: string, description: string): Promise<{message: string; filename: string; url: string}> =>
+    apiRequest<{message: string; filename: string; url: string}>(`/api/meetings/${meetingId}/infographic`, {
+      method: 'POST',
+      body: JSON.stringify({ description }),
+    }),
+  generateDub: (meetingId: string, voice: string = 'alloy', format: 'mp3' | 'wav' | 'ogg' = 'mp3'): Promise<{message: string; filename: string; url: string; text: string}> =>
+    apiRequest<{message: string; filename: string; url: string; text: string}>(`/api/meetings/${meetingId}/autodub`, {
+      method: 'POST',
+      body: JSON.stringify({ voice, format }),
+    }),
+
+  downloadDub: async (meetingId: string): Promise<{ blob: Blob; filename: string }> => {
+    const url = `${API_BASE_URL}/api/meetings/${meetingId}/autodub`;
+    const headers: Record<string, string> = {};
+    const token = getAuthToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(url, { method: 'GET', headers });
+    if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+    const cd = res.headers.get('content-disposition');
+    const filename = parseFilenameFromContentDisposition(cd, 'meeting_autodub');
     const blob = await res.blob();
     return { blob, filename };
   },

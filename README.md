@@ -1,16 +1,18 @@
-# TNIFMC Lead Management System
+# Niveshya Lead Management System
 
 A comprehensive investment tracking and lead management system built with FastAPI (Python) backend and React (TypeScript) frontend, using MongoDB for flexible data storage.
 
 ## 🏗️ Architecture
 
 ### Backend (FastAPI + MongoDB)
+
 - **FastAPI**: Modern, fast Python web framework with automatic API documentation
 - **MongoDB**: NoSQL database perfect for flexible JSON-based data structures
 - **Beanie ODM**: Async MongoDB object document mapper built on Pydantic
 - **SOLID Principles**: Clean architecture with dependency injection
 
 ### Frontend (React + TypeScript + TailwindCSS)
+
 - **React 18**: Modern React with TypeScript for type safety
 - **TailwindCSS**: Utility-first CSS framework for rapid development
 - **Following 21st.dev principles**: Modern web development best practices
@@ -20,37 +22,44 @@ A comprehensive investment tracking and lead management system built with FastAP
 Based on your existing JSON data structure:
 
 ### 1. **Contacts** (`rearrangedContacts.json`)
+
 - External organization contacts
 - Personal details, contact information
 - Geographic and organizational data
 
-### 2. **Fundraising** (`summary_FR.json`)  
+### 2. **Fundraising** (`summary_FR.json`)
+
 - Investment tracking with stages
 - Financial amounts and commitments
 - Process tracking (meetings, due diligence, etc.)
 
 ### 3. **Users** (`users.json`)
-- TNIFMC team members
+
+- Niveshya team members
 - Authentication and role management
 - Employee information
 
 ### 4. **Opportunities**
+
 - Business opportunities tracking
 - Probability and value estimates
 - Status and priority management
 
 ### 5. **Tasks**
+
 - Activity and follow-up tracking
 - Due dates and assignments
 - Integration with contacts/opportunities
 
 ### 6. **Tracker**
+
 - Flexible tracking for miscellaneous data
 - JSON storage for varied data types
 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Python 3.8+
 - Node.js 16+
 - MongoDB 4.4+
@@ -126,12 +135,14 @@ DEBUG=true
 ## 📚 API Documentation
 
 Once the backend is running, visit:
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+
+- **Swagger UI**: <http://localhost:8000/docs>
+- **ReDoc**: <http://localhost:8000/redoc>
 
 ### Key Endpoints
 
 #### Contacts
+
 - `GET /api/contacts/` - List contacts
 - `POST /api/contacts/` - Create contact
 - `GET /api/contacts/{id}` - Get contact details
@@ -139,11 +150,12 @@ Once the backend is running, visit:
 - `DELETE /api/contacts/{id}` - Delete contact
 - `GET /api/contacts/search/?q={query}` - Search contacts
 
-#### More endpoints for Fundraising, Users, Opportunities, Tasks, Tracker...
+#### More endpoints for Fundraising, Users, Opportunities, Tasks, Tracker
 
 ## 🎯 Features
 
 ### ✅ Completed Features
+
 - FastAPI backend with MongoDB integration
 - Pydantic models based on your JSON structure
 - React frontend with TailwindCSS styling
@@ -152,6 +164,7 @@ Once the backend is running, visit:
 - CORS configuration for frontend-backend communication
 
 ### 🚧 Next Development Phase
+
 - Complete all CRUD controllers (Fundraising, Users, etc.)
 - Authentication & authorization system
 - React components for each data model
@@ -163,7 +176,7 @@ Once the backend is running, visit:
 
 ## 🏛️ Project Structure
 
-```
+```text
 new-trackon/
 ├── backend/
 │   ├── app/
@@ -220,18 +233,20 @@ npm test
 1. **Start MongoDB**: Ensure MongoDB is running locally or use Atlas
 2. **Backend Development**: Run `python main_simple.py` in backend/
 3. **Frontend Development**: Run `PORT=3001 npm start` in frontend/
-4. **API Testing**: Use the Swagger UI at http://localhost:8000/docs
-5. **Frontend Testing**: Access the app at http://localhost:3001
+4. **API Testing**: Use the Swagger UI at <http://localhost:8000/docs>
+5. **Frontend Testing**: Access the app at <http://localhost:3001>
 
 ## 🚀 Deployment
 
 ### Backend Deployment
+
 - Use Docker containers
 - Deploy to AWS/GCP/Azure
 - Use managed MongoDB (Atlas)
 - Set environment variables
 
 ### Frontend Deployment
+
 - Build: `npm run build`
 - Deploy to Netlify/Vercel/S3
 - Configure API base URL
@@ -246,8 +261,8 @@ npm test
 
 ## 📞 Support
 
-For questions about the Lead Management System, please contact the TNIFMC development team.
+For questions about the Lead Management System, please contact the Niveshya development team.
 
 ---
 
-**Built with ❤️ for TNIFMC Investment Management**
+### Built with ❤️ for Niveshya Investment Management

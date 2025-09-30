@@ -39,7 +39,7 @@ class Fundraising(Document):
     reference: str = Field(..., description="Reference source")
     tnifmc_request_inr_cr: Optional[float] = Field(None, alias="TNIFMC_Request_INR_Cr", description="Requested amount in INR Crores")
     investor_type: Optional[InvestorType] = Field(None, alias="Investor_Type")
-    responsibility_tnifmc: str = Field(..., alias="Responsibility_TNIFMC", description="Responsible TNIFMC person")
+    responsibility_tnifmc: str = Field(..., alias="Responsibility_TNIFMC", description="Responsible team member at Niveshya")
     
     # Process tracking booleans
     feeler_teaser_letter_sent: bool = Field(False, alias="FeelerTeaserLetter_Sent")

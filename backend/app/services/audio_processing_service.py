@@ -24,6 +24,8 @@ class AudioProcessingService:
             pass
         self.openai_client = openai.OpenAI(api_key=effective_key) if effective_key else openai.OpenAI()
         self.audio_dir = "uploads/audio"
+        self.images_dir = "uploads/images"
+        self.dubs_dir = "uploads/dubs"
 
     async def process_audio_recording(self, meeting_id: str) -> Dict:
         """
@@ -191,6 +193,129 @@ class AudioProcessingService:
             "generated_at": datetime.utcnow()
         }
 
+    async def generate_infographic_for_meeting(self, meeting_id: str, description: str, images_dir: Optional[str] = None) -> Dict:
+        """Generate an illustrative image/infographic for a meeting and save it locally as PNG."""
+        meeting = await Meeting.get(meeting_id)
+        if not meeting:
+            raise ValueError("Meeting not found")
+
+        # Build context to inform the image prompt
+        parts = [
+            f"Title: {meeting.title}",
+            f"Type: {meeting.meeting_type}",
+            f"Status: {meeting.status}",
+        ]
+        if meeting.ai_summary:
+            parts.append(f"Summary: {meeting.ai_summary}")
+        elif meeting.notes:
+            parts.append(f"Notes: {meeting.notes}")
+
+        context_text = "\n".join(parts)
+        image_prompt = (
+            f"Create a clean, professional infographic that visually conveys the meeting context for an investment/fundraising discussion.\n"
+            f"Context:\n{context_text}\n\n"
+            f"Instruction: {description}. Use a white background and minimal color palette, include concise labels."
+        )
+
+        # Validate API key availability
+        if not getattr(self.openai_client, "api_key", None) and not os.getenv("OPENAI_API_KEY"):
+            raise RuntimeError("OpenAI API key not configured. Provide X-OpenAI-API-Key header or set OPENAI_API_KEY.")
+
+        # Generate image using OpenAI Images API (DALL·E style)
+        img = self.openai_client.images.generate(
+            model="gpt-image-1",
+            prompt=image_prompt,
+            size="1024x1024",
+            response_format="b64_json",
+        )
+        b64 = img.data[0].b64_json
+        if not b64:
+            raise RuntimeError("Failed to generate image")
+
+        import base64
+        png_bytes = base64.b64decode(b64)
+        out_dir = images_dir or self.images_dir
+        os.makedirs(out_dir, exist_ok=True)
+        filename = f"{meeting_id}_infographic.png"
+        path = os.path.join(out_dir, filename)
+        with open(path, 'wb') as f:
+            f.write(png_bytes)
+
+        return {"filename": filename, "path": path}
+
+    async def generate_campaign_insights(self, fundraising_id: str, custom_prompt: str, meeting_ids: Optional[List[str]] = None) -> Dict:
+        """Generate insights across multiple meetings in a fundraising campaign.
+        Prefers AI summaries and key points; falls back to notes or a truncated transcript.
+        """
+
+        # Fetch meetings in campaign
+        query = {"fundraising_id": fundraising_id}
+        if meeting_ids:
+            query.update({"_id": {"$in": meeting_ids}})
+        meetings = await Meeting.find(query).sort([("scheduled_date", 1)]).to_list()
+
+        if not meetings:
+            raise ValueError("No meetings found for this fundraising campaign")
+
+        def truncate(text: Optional[str], max_chars: int = 2000) -> str:
+            if not text:
+                return ""
+            return text if len(text) <= max_chars else text[:max_chars] + "..."
+
+        # Build context sections per meeting
+        context_sections = []
+        for m in meetings:
+            date_str = m.scheduled_date.strftime('%Y-%m-%d %H:%M') if m.scheduled_date else 'N/A'
+            parts = [f"Title: {m.title}", f"Date: {date_str}", f"Type: {m.meeting_type}", f"Status: {m.status}"]
+
+            if m.ai_summary:
+                parts.append(f"AI Summary: {truncate(m.ai_summary, 800)}")
+            if m.ai_key_points:
+                parts.append(f"AI Key Points: {truncate('\n'.join(m.ai_key_points), 800)}")
+            if m.notes:
+                parts.append(f"Notes: {truncate(m.notes, 800)}")
+            # Fallback to transcript if present
+            if m.audio_recording and m.audio_recording.transcript and not m.ai_summary and not m.notes:
+                parts.append(f"Transcript excerpt: {truncate(m.audio_recording.transcript, 1500)}")
+
+            context_sections.append("\n".join(parts))
+
+        context = "\n\n---\n\n".join(context_sections)
+
+        prompt = f"""
+        You are an expert investment analyst. Based on the following set of meetings for a single fundraising campaign,
+        answer the user's question. Use all relevant details across meetings. If there are inconsistencies, explain them.
+
+        MEETINGS CONTEXT (chronological):
+        {context}
+
+        USER QUESTION:
+        {custom_prompt}
+
+        Provide a clear, concise answer grounded only in the provided context. If information is missing, state what is missing.
+        """
+
+        # Validate API key availability
+        if not getattr(self.openai_client, "api_key", None) and not os.getenv("OPENAI_API_KEY"):
+            raise RuntimeError("OpenAI API key not configured. Provide X-OpenAI-API-Key header or set OPENAI_API_KEY.")
+
+        response = self.openai_client.chat.completions.create(
+            model="gpt-4",
+            messages=[
+                {"role": "system", "content": "You synthesize insights across multiple related meetings for fundraising."},
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.4,
+            max_tokens=1200
+        )
+
+        return {
+            "custom_prompt": custom_prompt,
+            "response": response.choices[0].message.content.strip(),
+            "generated_at": datetime.utcnow(),
+            "meetings_used": [str(m.id) for m in meetings],
+        }
+
     async def extract_action_items(self, transcript: str) -> List[str]:
         """Extract specific action items from transcript"""
 
@@ -251,3 +376,113 @@ class AudioProcessingService:
         decisions = response.choices[0].message.content.strip()
         items = [item.strip('- •123456789. ') for item in decisions.split('\n') if item.strip()]
         return [item for item in items if item]
+
+    async def auto_dub_meeting(self, meeting_id: str, target_voice: str = "alloy", audio_format: str = "mp3") -> Dict:
+        """Translate any transcript to English and synthesize an English dub audio file.
+        Saves the dubbed audio to uploads/dubs and updates meeting metadata.
+        Returns { filename, url, text }.
+        """
+        meeting = await Meeting.get(meeting_id)
+        if not meeting or not meeting.audio_recording:
+            raise ValueError("Meeting or audio recording not found")
+
+        # Ensure transcript exists; if not, transcribe first
+        if not meeting.audio_recording.transcript:
+            audio_path = os.path.join(self.audio_dir, meeting.audio_recording.filename)
+            transcript = await self._transcribe_audio(audio_path)
+            meeting.audio_recording.transcript = transcript
+            await meeting.save()
+        else:
+            transcript = meeting.audio_recording.transcript
+
+        # 1) Translate to English using GPT if needed
+        # Quick heuristic: if transcript contains many non-ascii characters, do translation; otherwise still normalize to English
+        needs_translation = any(ord(ch) > 127 for ch in transcript[:200])
+
+        # Validate API key availability
+        if not getattr(self.openai_client, "api_key", None) and not os.getenv("OPENAI_API_KEY"):
+            raise RuntimeError("OpenAI API key not configured. Provide X-OpenAI-API-Key header or set OPENAI_API_KEY.")
+
+        if needs_translation:
+            translate_prompt = (
+                "Translate the following transcript into clear, fluent English. Preserve meaning and names.\n\n" + transcript
+            )
+            tr = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are a professional translator to English."},
+                    {"role": "user", "content": translate_prompt},
+                ],
+                temperature=0.2,
+                max_tokens=6000,
+            )
+            english_text = tr.choices[0].message.content.strip()
+        else:
+            # Optionally ask model to clean up English for TTS clarity
+            cleanup_prompt = (
+                "Rewrite this transcript into concise, clear English suitable for voiceover, without changing factual content.\n\n" + transcript
+            )
+            tr = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "You are an editor preparing text for voiceover."},
+                    {"role": "user", "content": cleanup_prompt},
+                ],
+                temperature=0.3,
+                max_tokens=6000,
+            )
+            english_text = tr.choices[0].message.content.strip()
+
+        # 2) Text-to-Speech using OpenAI TTS
+        # Some SDKs expose client.audio.speech for TTS, or use responses with audio. Use latest TTS API route.
+        # We'll request MP3 bytes and save.
+        from openai import audio
+        os.makedirs(self.dubs_dir, exist_ok=True)
+        dub_filename = f"{meeting_id}_dub.{audio_format}"
+        dub_path = os.path.join(self.dubs_dir, dub_filename)
+
+        # Using the new Responses API with audio output when available; fallback to tts-1
+        try:
+            # Preferred modern API pattern (if available in installed SDK)
+            resp = self.openai_client.chat.completions.create(
+                model="gpt-4o-mini-tts",
+                messages=[{"role": "user", "content": english_text}],
+                audio={"voice": target_voice, "format": audio_format},
+            )
+            # Depending on SDK version, audio bytes may be in resp.choices[0].message.audio.data
+            audio_b64 = getattr(getattr(resp.choices[0].message, "audio", None), "data", None)
+            if not audio_b64:
+                raise RuntimeError("TTS audio not present in response; SDK version may not support this path")
+            import base64
+            audio_bytes = base64.b64decode(audio_b64)
+        except Exception:
+            # Fallback to classic TTS API
+            # openai.audio.speech.with_streaming_response.create(...)
+            try:
+                tts = self.openai_client.audio.speech.create(
+                    model="tts-1",
+                    voice=target_voice,
+                    input=english_text,
+                    format=audio_format,
+                )
+                audio_bytes = tts.read() if hasattr(tts, "read") else tts.audio
+            except Exception as e:
+                raise RuntimeError(f"TTS generation failed: {e}")
+
+        with open(dub_path, "wb") as f:
+            f.write(audio_bytes)
+
+        # Update meeting metadata
+        meeting.dub_filename = dub_filename
+        meeting.dub_text = english_text
+        meeting.dub_generated_at = datetime.utcnow()
+        meeting.dub_voice = target_voice
+        meeting.dub_format = audio_format
+        meeting.updated_at = datetime.utcnow()
+        await meeting.save()
+
+        return {
+            "filename": dub_filename,
+            "url": f"/api/meetings/{meeting_id}/autodub",
+            "text": english_text,
+        }

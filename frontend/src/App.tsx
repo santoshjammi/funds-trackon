@@ -2220,7 +2220,7 @@ const AppContent: React.FC = () => {
             {renderField('Organization', selectedFundraising.organisation, 'organisation')}
             {renderField('Status', selectedFundraising.status_open_closed, 'status_open_closed', 'select', ['Open', 'Closed', 'Invested'])}
             {renderField('Reference', selectedFundraising.reference, 'reference')}
-            {renderField('TNIFMC Request (₹ Cr)', selectedFundraising.tnifmc_request_inr_cr, 'tnifmc_request_inr_cr', 'number')}
+            {renderField('Niveshya Request (₹ Cr)', selectedFundraising.tnifmc_request_inr_cr, 'tnifmc_request_inr_cr', 'number')}
             {renderField('Commitment Amount (₹ Cr)', selectedFundraising.commitment_amount_inr_cr, 'commitment_amount_inr_cr', 'number')}
             {renderField('Investor Type', selectedFundraising.investor_type, 'investor_type')}
             {renderField('Responsible (TNIFMC)', selectedFundraising.responsibility_tnifmc, 'responsibility_tnifmc')}

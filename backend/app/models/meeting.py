@@ -40,7 +40,7 @@ class MeetingAttendee(BaseModel):
     designation: Optional[str] = None
     organisation: str
     email: Optional[str] = None
-    is_internal: bool = False  # True for TNIFMC staff, False for external contacts
+    is_internal: bool = False  # True for Niveshya staff, False for external contacts
 
 
 class AudioRecording(BaseModel):
@@ -79,7 +79,7 @@ class Meeting(Document):
 
     # Attendees
     attendees: List[MeetingAttendee] = Field(default_factory=list, description="List of meeting attendees")
-    tnifmc_representatives: List[str] = Field(default_factory=list, description="TNIFMC staff who attended")
+    tnifmc_representatives: List[str] = Field(default_factory=list, description="Niveshya team who attended")
 
     # Audio recording
     audio_recording: Optional[AudioRecording] = Field(None, description="Audio recording information")
@@ -95,6 +95,18 @@ class Meeting(Document):
     ai_key_points: Optional[List[str]] = Field(None, description="AI-extracted key points")
     ai_action_items: Optional[List[str]] = Field(None, description="AI-suggested action items")
     ai_sentiment: Optional[str] = Field(None, description="AI-detected sentiment analysis")
+
+    # Generated visual (infographic) persisted on disk
+    infographic_filename: Optional[str] = Field(None, description="Filename of generated infographic image")
+    infographic_description: Optional[str] = Field(None, description="Description/prompt used to generate the infographic")
+    infographic_generated_at: Optional[datetime] = Field(None, description="Timestamp when infographic was generated")
+
+    # Auto-dubbed English audio (TTS from translated transcript)
+    dub_filename: Optional[str] = Field(None, description="Filename of English dubbed audio")
+    dub_text: Optional[str] = Field(None, description="English text used to generate dub (translated transcript)")
+    dub_generated_at: Optional[datetime] = Field(None, description="Timestamp when dub was generated")
+    dub_voice: Optional[str] = Field(None, description="TTS voice used for dub")
+    dub_format: Optional[str] = Field(None, description="Audio format for dub, e.g., mp3/wav")
 
     # Metadata
     created_by: str = Field(..., description="User ID who created the meeting")
@@ -126,7 +138,7 @@ class Meeting(Document):
                 "scheduled_date": "2024-03-15T10:00:00Z",
                 "actual_date": "2024-03-15T10:00:00Z",
                 "duration_minutes": 90,
-                "location": "Conference Room A, TNIFMC Office",
+                "location": "Conference Room A, Niveshya Office",
                 "is_virtual": False,
                 "attendees": [
                     {
@@ -138,7 +150,7 @@ class Meeting(Document):
                     }
                 ],
                 "tnifmc_representatives": ["K. Ganapathy Subramanian", "Krishna Chaitanya K"],
-                "agenda": "Discuss investment opportunities in TNIFMC",
+                "agenda": "Discuss investment opportunities in Niveshya",
                 "discussion_points": "Reviewed investment proposal, discussed terms",
                 "action_items": "Send detailed proposal by next week",
                 "created_by": "60f1b2b3c4d5e6f7g8h9i0j3"
