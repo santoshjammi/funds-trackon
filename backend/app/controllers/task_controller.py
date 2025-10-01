@@ -38,7 +38,7 @@ async def create_task(task_data: TaskCreate):
 @task_router.get("/", response_model=List[dict])
 async def get_all_tasks(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000)
+    limit: int = Query(10000, ge=1, le=10000)
 ):
     """Get all tasks"""
     tasks = await Task.find_all().skip(skip).limit(limit).to_list()

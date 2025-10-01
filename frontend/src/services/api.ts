@@ -1,6 +1,14 @@
 // API configuration and base setup
 // Prefer environment override; default to same-origin '' so endpoints like '/api/...'
 // are not double-prefixed when behind Nginx proxying '/api' to backend.
+import { 
+  Permission, 
+  Role, 
+  CreateRoleRequest, 
+  UpdateRoleRequest, 
+  UserRolesResponse 
+} from '../types/rbac';
+
 const API_BASE_URL =
   (typeof process !== 'undefined' && process.env && (process.env.REACT_APP_API_BASE_URL as string))
   || '';
@@ -356,7 +364,7 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
 
 // Contact API functions
 export const contactsApi = {
-  getAll: (): Promise<Contact[]> => apiRequest<Contact[]>('/api/contacts/'),
+  getAll: (limit: number = 10000): Promise<Contact[]> => apiRequest<Contact[]>(`/api/contacts/?limit=${limit}`),
   getById: (id: string): Promise<Contact> => apiRequest<Contact>(`/api/contacts/${id}`),
   create: (contact: Omit<Contact, 'id'>): Promise<{message: string, id: string}> => 
     apiRequest<{message: string, id: string}>('/api/contacts/', {
@@ -376,7 +384,7 @@ export const contactsApi = {
 
 // Fundraising API functions
 export const fundraisingApi = {
-  getAll: (): Promise<Fundraising[]> => apiRequest<Fundraising[]>('/api/fundraising/').then(items => items.map((c: any) => ({
+  getAll: (): Promise<Fundraising[]> => apiRequest<Fundraising[]>('/api/fundraising/?limit=10000').then(items => items.map((c: any) => ({
     ...c,
     // prefer new fields if present
     tnifmc_request_inr_cr: c.niveshya_request_inr_cr ?? c.tnifmc_request_inr_cr,
@@ -405,7 +413,7 @@ export const fundraisingApi = {
 
 // Organizations API functions
 export const organizationsApi = {
-  getAll: (): Promise<Organization[]> => apiRequest<Organization[]>('/api/organizations/'),
+  getAll: (): Promise<Organization[]> => apiRequest<Organization[]>('/api/organizations/?limit=10000'),
   getById: (id: string): Promise<Organization> => apiRequest<Organization>(`/api/organizations/${id}`),
   create: (organization: Omit<Organization, 'id'>): Promise<{message: string, id: string}> => 
     apiRequest<{message: string, id: string}>('/api/organizations/', {
@@ -466,7 +474,7 @@ export const authApi = {
 
 // Enhanced Users API functions with password management
 export const usersApi = {
-  getAll: (): Promise<User[]> => apiRequest<User[]>('/api/users/'),
+  getAll: (): Promise<User[]> => apiRequest<User[]>('/api/users/?limit=10000'),
   getById: (id: string): Promise<User> => apiRequest<User>(`/api/users/${id}`),
   update: (id: string, user: Partial<User>): Promise<{message: string}> =>
     apiRequest<{message: string}>(`/api/users/${id}`, {
@@ -493,6 +501,58 @@ export const usersApi = {
   
   hasPassword: (id: string): Promise<{user_id: string, has_password: boolean}> =>
     apiRequest<{user_id: string, has_password: boolean}>(`/api/users/${id}/has-password`),
+};
+
+// RBAC API functions
+export const rolesApi = {
+  // Get all permissions
+  getPermissions: (): Promise<Permission[]> =>
+    apiRequest<Permission[]>('/api/roles/permissions'),
+  
+  // Get all roles
+  getRoles: (): Promise<Role[]> =>
+    apiRequest<Role[]>('/api/roles'),
+  
+  // Get specific role
+  getRole: (roleId: string): Promise<Role> =>
+    apiRequest<Role>(`/api/roles/${roleId}`),
+  
+  // Create new role
+  createRole: (role: CreateRoleRequest): Promise<Role> =>
+    apiRequest<Role>('/api/roles', {
+      method: 'POST',
+      body: JSON.stringify(role),
+    }),
+  
+  // Update role
+  updateRole: (roleId: string, role: UpdateRoleRequest): Promise<Role> =>
+    apiRequest<Role>(`/api/roles/${roleId}`, {
+      method: 'PUT',
+      body: JSON.stringify(role),
+    }),
+  
+  // Delete role
+  deleteRole: (roleId: string): Promise<{message: string}> =>
+    apiRequest<{message: string}>(`/api/roles/${roleId}`, {
+      method: 'DELETE',
+    }),
+  
+  // Assign role to user
+  assignRole: (userId: string, roleId: string): Promise<{message: string}> =>
+    apiRequest<{message: string}>('/api/roles/assign', {
+      method: 'POST',
+      body: JSON.stringify({user_id: userId, role_id: roleId}),
+    }),
+  
+  // Unassign role from user
+  unassignRole: (userId: string, roleId: string): Promise<{message: string}> =>
+    apiRequest<{message: string}>(`/api/roles/unassign/${userId}/${roleId}`, {
+      method: 'DELETE',
+    }),
+  
+  // Get user roles
+  getUserRoles: (userId: string): Promise<UserRolesResponse> =>
+    apiRequest<UserRolesResponse>(`/api/roles/user/${userId}`),
 };
 
 // Meetings API functions

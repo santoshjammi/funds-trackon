@@ -5,7 +5,7 @@ User Controller - Handles user management endpoints
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, Query
 from pydantic import BaseModel, EmailStr
-from app.models.user import User, UserRole, EmploymentType
+from app.models.user import User, EmploymentType
 from beanie import PydanticObjectId
 from datetime import datetime
 from passlib.context import CryptContext
@@ -36,7 +36,7 @@ class UserResponse(BaseModel):
     phone: Optional[str] = None
     notes: Optional[str] = None
     username: Optional[str] = None
-    roles: List[UserRole]
+    role_names: List[str]
     is_active: bool
     created_at: datetime
     updated_at: datetime
@@ -53,7 +53,7 @@ class UserCreate(BaseModel):
     notes: Optional[str] = None
     username: Optional[str] = None
     password_hash: Optional[str] = None
-    roles: List[UserRole] = [UserRole.USER]
+    role_names: List[str] = ["User"]
     is_active: bool = True
 
 class UserUpdate(BaseModel):
@@ -65,13 +65,13 @@ class UserUpdate(BaseModel):
     phone: Optional[str] = None
     notes: Optional[str] = None
     username: Optional[str] = None
-    roles: Optional[List[UserRole]] = None
+    role_names: Optional[List[str]] = None
     is_active: Optional[bool] = None
 
 @user_router.get("/", response_model=List[UserResponse])
 async def get_all_users(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000)
+    limit: int = Query(10000, ge=1, le=10000)
 ):
     """Get all users"""
     try:
@@ -87,7 +87,7 @@ async def get_all_users(
                 phone=user.phone,
                 notes=user.notes,
                 username=user.username,
-                roles=user.roles,
+                role_names=user.get_role_names(),
                 is_active=user.is_active,
                 created_at=user.created_at,
                 updated_at=user.updated_at,
@@ -118,7 +118,7 @@ async def get_user(user_id: str):
             phone=user.phone,
             notes=user.notes,
             username=user.username,
-            roles=user.roles,
+            role_names=user.get_role_names(),
             is_active=user.is_active,
             created_at=user.created_at,
             updated_at=user.updated_at,
@@ -176,10 +176,10 @@ async def create_user(user_data: UserCreate):
         raise HTTPException(status_code=500, detail=f"Error creating user: {str(e)}")
 
 @user_router.get("/role/{role}", response_model=List[UserResponse])
-async def get_users_by_role(role: UserRole):
+async def get_users_by_role(role: str):
     """Get users by role"""
     try:
-        users = await User.find({"roles": role}).to_list()
+        users = await User.find({"role_assignments.role_name": role}).to_list()
         return [
             UserResponse(
                 id=str(user.id),
@@ -191,7 +191,7 @@ async def get_users_by_role(role: UserRole):
                 phone=user.phone,
                 notes=user.notes,
                 username=user.username,
-                roles=user.roles,
+                role_names=user.get_role_names(),
                 is_active=user.is_active,
                 created_at=user.created_at,
                 updated_at=user.updated_at,

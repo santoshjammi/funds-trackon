@@ -85,7 +85,7 @@ async def create_fundraising_campaign(campaign_data: FundraisingCreate):
 @fundraising_router.get("/", response_model=List[FundraisingResponse])
 async def get_all_campaigns(
     skip: int = Query(0, ge=0),
-    limit: int = Query(500, ge=1, le=1000),
+    limit: int = Query(10000, ge=1, le=10000),
     status: Optional[FundraisingStatus] = Query(None, description="Filter by status"),
     organisation: Optional[str] = Query(None, description="Filter by organisation")
 ):

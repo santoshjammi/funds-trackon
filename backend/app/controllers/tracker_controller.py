@@ -33,7 +33,7 @@ async def create_tracker_entry(tracker_data: TrackerCreate):
 @tracker_router.get("/", response_model=List[dict])
 async def get_all_tracker_entries(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000)
+    limit: int = Query(10000, ge=1, le=10000)
 ):
     """Get all tracker entries"""
     trackers = await Tracker.find_all().skip(skip).limit(limit).to_list()

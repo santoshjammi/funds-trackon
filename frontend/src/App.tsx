@@ -4,10 +4,13 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import MeetingManager from './components/MeetingManager';
 import Login from './components/Login';
 import UserProfile from './components/UserProfile';
+import AdminSettings from './components/AdminSettings';
+import Dashboard from './components/Dashboard';
+import Reports from './components/Reports';
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated, loading: authLoading, login, logout } = useAuth();
-  const [activeView, setActiveView] = useState<'contacts' | 'contact-detail' | 'organizations' | 'organization-detail' | 'fundraising' | 'fundraising-detail' | 'users' | 'user-detail' | 'user-profile'>('organizations');
+  const { isAuthenticated, loading: authLoading, login, logout, hasAnyRole } = useAuth();
+  const [activeView, setActiveView] = useState<'dashboard' | 'contacts' | 'contact-detail' | 'organizations' | 'organization-detail' | 'fundraising' | 'fundraising-detail' | 'users' | 'user-detail' | 'user-profile' | 'admin-settings' | 'reports'>('dashboard');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [fundraising, setFundraising] = useState<Fundraising[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -112,7 +115,7 @@ const AppContent: React.FC = () => {
     };
 
     // Only fetch data for views that need it (not detail views which have their own data)
-    if (['contacts', 'organizations', 'fundraising', 'users'].includes(activeView)) {
+    if (['dashboard', 'contacts', 'organizations', 'fundraising', 'users', 'reports'].includes(activeView)) {
       fetchData();
     }
   }, [activeView, backendStatus]);
@@ -166,6 +169,16 @@ const AppContent: React.FC = () => {
       <div className="container mx-auto px-4">
         <div className="flex justify-center space-x-8">
           <button
+            onClick={() => setActiveView('dashboard')}
+            className={`py-4 px-6 font-medium transition-colors border-b-2 ${
+              activeView === 'dashboard' 
+                ? 'border-blue-500 text-blue-600 bg-blue-50' 
+                : 'border-transparent text-gray-600 hover:text-blue-600 hover:border-blue-300'
+            }`}
+          >
+            📈 Dashboard
+          </button>
+          <button
             onClick={() => setActiveView('organizations')}
             className={`py-4 px-6 font-medium transition-colors border-b-2 ${
               activeView.startsWith('organization') 
@@ -205,6 +218,28 @@ const AppContent: React.FC = () => {
           >
             🏢 Team Members
           </button>
+          <button
+            onClick={() => setActiveView('reports')}
+            className={`py-4 px-6 font-medium transition-colors border-b-2 ${
+              activeView === 'reports' 
+                ? 'border-orange-500 text-orange-600 bg-orange-50' 
+                : 'border-transparent text-gray-600 hover:text-orange-600 hover:border-orange-300'
+            }`}
+          >
+            📊 Reports
+          </button>
+          {hasAnyRole(['Super Admin', 'Admin']) && (
+            <button
+              onClick={() => setActiveView('admin-settings')}
+              className={`py-4 px-6 font-medium transition-colors border-b-2 ${
+                activeView === 'admin-settings' 
+                  ? 'border-purple-500 text-purple-600 bg-purple-50' 
+                  : 'border-transparent text-gray-600 hover:text-purple-600 hover:border-purple-300'
+              }`}
+            >
+              ⚙️ Admin Settings
+            </button>
+          )}
         </div>
       </div>
     </nav>
@@ -1686,6 +1721,36 @@ const AppContent: React.FC = () => {
     );
   };
 
+  const renderAdminSettings = () => {
+    // Check if user has admin privileges
+    if (!hasAnyRole(['Super Admin', 'Admin'])) {
+      return (
+        <div className="text-center py-16">
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+            <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h3 className="mt-2 text-sm font-medium text-gray-900">Access Denied</h3>
+          <p className="mt-1 text-sm text-gray-500">
+            You don't have permission to access admin settings. Contact your administrator for access.
+          </p>
+        </div>
+      );
+    }
+
+    return (
+      <AdminSettings 
+        onError={(error) => setError(error)}
+        onSuccess={(message) => {
+          setError(null);
+          // Show success message (you could add a success state if needed)
+          console.log('Success:', message);
+        }}
+      />
+    );
+  };
+
   const renderOrganizations = () => {
     const processedOrganizations = getProcessedOrganizations();
     
@@ -2577,6 +2642,10 @@ const AppContent: React.FC = () => {
 
   const renderContent = () => {
     switch (activeView) {
+      case 'dashboard':
+        return <Dashboard />;
+      case 'reports':
+        return <Reports />;
       case 'contacts':
         return renderContacts();
       case 'contact-detail':
@@ -2595,8 +2664,10 @@ const AppContent: React.FC = () => {
         return renderUserDetail();
       case 'user-profile':
         return renderUserProfile();
+      case 'admin-settings':
+        return renderAdminSettings();
       default:
-        return renderOrganizations();
+        return <Dashboard />;
     }
   };
 

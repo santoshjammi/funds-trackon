@@ -40,7 +40,7 @@ async def create_opportunity(opportunity_data: OpportunityCreate):
 @opportunity_router.get("/", response_model=List[dict])
 async def get_all_opportunities(
     skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000)
+    limit: int = Query(10000, ge=1, le=10000)
 ):
     """Get all investment opportunities"""
     opportunities = await Opportunity.find_all().skip(skip).limit(limit).to_list()

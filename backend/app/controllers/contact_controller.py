@@ -52,7 +52,7 @@ async def create_contact(contact_data: ContactCreate):
 @contact_router.get("/", response_model=List[Contact])
 async def get_contacts(
     skip: int = Query(0, ge=0),
-    limit: int = Query(200, ge=1, le=1000),
+    limit: int = Query(10000, ge=1, le=10000),
     organisation: Optional[str] = None
 ):
     """Get all contacts with optional filtering"""
@@ -107,7 +107,7 @@ async def delete_contact(contact_id: str):
 @contact_router.get("/search/", response_model=List[Contact])
 async def search_contacts(
     q: str = Query(..., min_length=2, description="Search query"),
-    limit: int = Query(50, ge=1, le=100)
+    limit: int = Query(500, ge=1, le=1000)
 ):
     """Search contacts by name or organisation"""
     try:

@@ -81,7 +81,7 @@ async def create_organization(organization: OrganizationCreate):
 @organization_router.get("/", response_model=List[Organization])
 async def get_all_organizations(
     skip: int = Query(0, ge=0, description="Number of organizations to skip"),
-    limit: int = Query(500, ge=1, le=1000, description="Number of organizations to return"),
+    limit: int = Query(10000, ge=1, le=10000, description="Number of organizations to return"),
     industry: Optional[IndustryType] = Query(None, description="Filter by industry"),
     status: Optional[OrganizationStatus] = Query(None, description="Filter by status"),
     country: Optional[str] = Query(None, description="Filter by country"),
@@ -175,7 +175,7 @@ async def delete_organization(organization_id: str):
 @organization_router.get("/search/by-name", response_model=List[Organization])
 async def search_organizations_by_name(
     name: str = Query(..., description="Organization name to search for"),
-    limit: int = Query(10, ge=1, le=50, description="Number of results to return")
+    limit: int = Query(100, ge=1, le=1000, description="Number of results to return")
 ):
     """Search organizations by name (for autocomplete/lookup)"""
     try:
