@@ -248,7 +248,25 @@ const AppContent: React.FC = () => {
   // Helper functions for search and sort
   const filterContacts = (contacts: Contact[]) => {
     if (!searchTerm) return contacts;
-    
+
+    // Check if searchTerm is a structured filter (e.g., "organization:ABC Corp")
+    const colonIndex = searchTerm.indexOf(':');
+    if (colonIndex > 0) {
+      const filterType = searchTerm.substring(0, colonIndex).toLowerCase();
+      const filterValue = searchTerm.substring(colonIndex + 1).toLowerCase().trim();
+
+      switch (filterType) {
+        case 'organization':
+          return contacts.filter(contact =>
+            contact.organisation?.toLowerCase().includes(filterValue)
+          );
+        default:
+          // Fall back to regular search
+          break;
+      }
+    }
+
+    // Regular text search across all fields
     return contacts.filter(contact =>
       contact.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       contact.organisation?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -865,7 +883,9 @@ const AppContent: React.FC = () => {
   // Organization helper functions for search and sort
   const filterOrganizations = (organizations: Organization[]) => {
     if (!orgSearchTerm) return organizations;
-    
+
+    // Check if orgSearchTerm is a structured filter (currently none implemented for organizations)
+    // For now, just do regular text search
     return organizations.filter(org =>
       org.name?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
       org.industry?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
@@ -1004,7 +1024,63 @@ const AppContent: React.FC = () => {
   // Fundraising filtering and sorting functions
   const filterFundraising = (fundraising: Fundraising[]) => {
     if (!fundraisingSearchTerm) return fundraising;
-    
+
+    // Check if fundraisingSearchTerm is a structured filter
+    const colonIndex = fundraisingSearchTerm.indexOf(':');
+    if (colonIndex > 0) {
+      const filterType = fundraisingSearchTerm.substring(0, colonIndex).toLowerCase();
+      const filterValue = fundraisingSearchTerm.substring(colonIndex + 1).toLowerCase().trim();
+
+      switch (filterType) {
+        case 'priority':
+          // Map priority to status filtering
+          if (filterValue === 'a') {
+            // High priority - look for active/open statuses
+            return fundraising.filter(campaign =>
+              campaign.status_open_closed?.toLowerCase() === 'open' ||
+              campaign.current_status?.toLowerCase().includes('active') ||
+              campaign.current_status?.toLowerCase().includes('process')
+            );
+          } else if (filterValue === 'b') {
+            // Medium priority - look for contacted/meeting statuses
+            return fundraising.filter(campaign =>
+              campaign.current_status?.toLowerCase().includes('meeting') ||
+              campaign.current_status?.toLowerCase().includes('discussion') ||
+              campaign.current_status?.toLowerCase().includes('appraisal')
+            );
+          } else if (filterValue === 'c') {
+            // Low priority - look for initial or no activity
+            return fundraising.filter(campaign =>
+              !campaign.current_status ||
+              campaign.current_status?.toLowerCase().includes('initial') ||
+              campaign.status_open_closed?.toLowerCase() === 'closed'
+            );
+          }
+          break;
+        case 'category':
+          // Map category to investor_type filtering
+          return fundraising.filter(campaign =>
+            campaign.investor_type?.toLowerCase().includes(filterValue)
+          );
+        case 'stage':
+          // Map stage to current_status filtering
+          return fundraising.filter(campaign =>
+            campaign.current_status?.toLowerCase().includes(filterValue) ||
+            campaign.status_open_closed?.toLowerCase().includes(filterValue)
+          );
+        case 'task_type':
+          // For task_type, filter based on notes or status
+          return fundraising.filter(campaign =>
+            campaign.notes?.toLowerCase().includes(filterValue) ||
+            campaign.current_status?.toLowerCase().includes(filterValue)
+          );
+        default:
+          // Fall back to regular search
+          break;
+      }
+    }
+
+    // Regular text search across all fields
     return fundraising.filter(campaign =>
       campaign.organisation?.toLowerCase().includes(fundraisingSearchTerm.toLowerCase()) ||
       campaign.reference?.toLowerCase().includes(fundraisingSearchTerm.toLowerCase()) ||
@@ -2643,7 +2719,20 @@ const AppContent: React.FC = () => {
   const renderContent = () => {
     switch (activeView) {
       case 'dashboard':
-        return <Dashboard />;
+        return <Dashboard 
+          onNavigateToContacts={(filter) => {
+            setSearchTerm(filter || '');
+            setActiveView('contacts');
+          }}
+          onNavigateToOrganizations={(filter) => {
+            setOrgSearchTerm(filter || '');
+            setActiveView('organizations');
+          }}
+          onNavigateToFundraising={(filter) => {
+            setFundraisingSearchTerm(filter || '');
+            setActiveView('fundraising');
+          }}
+        />;
       case 'reports':
         return <Reports />;
       case 'contacts':
@@ -2667,7 +2756,20 @@ const AppContent: React.FC = () => {
       case 'admin-settings':
         return renderAdminSettings();
       default:
-        return <Dashboard />;
+        return <Dashboard 
+          onNavigateToContacts={(filter) => {
+            setSearchTerm(filter || '');
+            setActiveView('contacts');
+          }}
+          onNavigateToOrganizations={(filter) => {
+            setOrgSearchTerm(filter || '');
+            setActiveView('organizations');
+          }}
+          onNavigateToFundraising={(filter) => {
+            setFundraisingSearchTerm(filter || '');
+            setActiveView('fundraising');
+          }}
+        />;
     }
   };
 

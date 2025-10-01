@@ -15,7 +15,9 @@ from app.models.meeting import Meeting, MeetingType, MeetingStatus, AudioProcess
 from app.models.fundraising import Fundraising
 from app.models.contact import Contact
 from app.models.user import User
+from app.models.role import PermissionType
 from app.controllers.auth_controller import get_current_user
+from app.utils.rbac import require_permissions
 from app.services.audio_processing_service import AudioProcessingService
 from app.utils.config import get_settings
 
@@ -326,6 +328,7 @@ async def get_audio_recording(
     )
 
 @meeting_router.delete("/{meeting_id}", response_model=dict)
+@require_permissions([PermissionType.DELETE_MEETINGS])
 async def delete_meeting(
     meeting_id: str,
     current_user: User = Depends(get_current_user)

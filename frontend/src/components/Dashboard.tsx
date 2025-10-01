@@ -9,9 +9,7 @@ import {
   ExclamationTriangleIcon,
   CheckCircleIcon,
   PhoneIcon,
-  EnvelopeIcon,
-  BuildingOfficeIcon,
-  CalendarDaysIcon
+  BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 import {
   BarChart,
@@ -23,11 +21,7 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell,
-  LineChart,
-  Line,
-  AreaChart,
-  Area
+  Cell
 } from 'recharts';
 import { analyticsService, DashboardSummary, FundraisingAnalytics, OpportunityMetrics, TaskAnalytics, ContactAnalytics } from '../services/analyticsApi';
 
@@ -90,7 +84,13 @@ interface ChartData {
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#06B6D4', '#84CC16', '#F97316'];
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+  onNavigateToContacts: (filter?: string) => void;
+  onNavigateToOrganizations: (filter?: string) => void;
+  onNavigateToFundraising: (filter?: string) => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ onNavigateToContacts, onNavigateToOrganizations, onNavigateToFundraising }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -100,6 +100,8 @@ const Dashboard: React.FC = () => {
   const [opportunityMetrics, setOpportunityMetrics] = useState<OpportunityMetrics | null>(null);
   const [taskAnalytics, setTaskAnalytics] = useState<TaskAnalytics | null>(null);
   const [contactAnalytics, setContactAnalytics] = useState<ContactAnalytics | null>(null);
+
+
 
   useEffect(() => {
     loadDashboardData();
@@ -133,6 +135,41 @@ const Dashboard: React.FC = () => {
   const handleRefresh = () => {
     loadDashboardData();
   };
+
+  const handleChartClick = (type: 'priority' | 'pipeline' | 'category' | 'task_type' | 'organization', name: string, value: number) => {
+    switch (type) {
+      case 'priority':
+        // Navigate to fundraising page with priority filter
+        const priorityMap = { 'High (A)': 'A', 'Medium (B)': 'B', 'Low (C)': 'C' };
+        const priorityKey = priorityMap[name as keyof typeof priorityMap] || name;
+        onNavigateToFundraising(`priority:${priorityKey}`);
+        break;
+
+      case 'pipeline':
+        // Navigate to opportunities/tasks page with pipeline stage filter
+        // For now, navigate to fundraising as it contains opportunity data
+        onNavigateToFundraising(`stage:${name.toLowerCase().replace(' ', '_')}`);
+        break;
+
+      case 'category':
+        // Navigate to fundraising page with category filter
+        onNavigateToFundraising(`category:${name}`);
+        break;
+
+      case 'task_type':
+        // Navigate to tasks page - but we don't have a dedicated tasks view yet
+        // For now, navigate to fundraising as it might contain task-related data
+        onNavigateToFundraising(`task_type:${name}`);
+        break;
+
+      case 'organization':
+        // Navigate to contacts page with organization filter
+        onNavigateToContacts(`organization:${name}`);
+        break;
+    }
+  };
+
+
 
   if (loading) {
     return (
@@ -282,6 +319,8 @@ const Dashboard: React.FC = () => {
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
+                  onClick={(data: any) => handleChartClick('priority', data.name, data.value)}
+                  style={{ cursor: 'pointer' }}
                 >
                   {priorityData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -301,7 +340,12 @@ const Dashboard: React.FC = () => {
                 <XAxis dataKey="name" />
                 <YAxis />
                 <Tooltip />
-                <Bar dataKey="value" fill="#3B82F6" />
+                <Bar 
+                  dataKey="value" 
+                  fill="#3B82F6" 
+                  onClick={(data: any) => handleChartClick('pipeline', data.name, data.value)}
+                  style={{ cursor: 'pointer' }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -318,7 +362,12 @@ const Dashboard: React.FC = () => {
                 <XAxis type="number" />
                 <YAxis dataKey="name" type="category" width={80} />
                 <Tooltip />
-                <Bar dataKey="value" fill="#10B981" />
+                <Bar 
+                  dataKey="value" 
+                  fill="#10B981" 
+                  onClick={(data: any) => handleChartClick('category', data.name, data.value)}
+                  style={{ cursor: 'pointer' }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -337,6 +386,8 @@ const Dashboard: React.FC = () => {
                   outerRadius={80}
                   fill="#8884d8"
                   dataKey="value"
+                  onClick={(data: any) => handleChartClick('task_type', data.name, data.value)}
+                  style={{ cursor: 'pointer' }}
                 >
                   {taskTypeData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -359,7 +410,12 @@ const Dashboard: React.FC = () => {
                 <XAxis dataKey="name" angle={-45} textAnchor="end" height={100} />
                 <YAxis />
                 <Tooltip />
-                <Bar dataKey="value" fill="#8B5CF6" />
+                <Bar 
+                  dataKey="value" 
+                  fill="#8B5CF6" 
+                  onClick={(data: any) => handleChartClick('organization', data.name, data.value)}
+                  style={{ cursor: 'pointer' }}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -480,6 +536,7 @@ const Dashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
     </div>
   );
 };

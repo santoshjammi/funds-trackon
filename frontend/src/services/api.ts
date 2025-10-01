@@ -674,6 +674,11 @@ export const meetingsApi = {
       }),
     }),
 
+  delete: (meetingId: string): Promise<{message: string}> =>
+    apiRequest<{message: string}>(`/api/meetings/${meetingId}`, {
+      method: 'DELETE',
+    }),
+
   // Downloads
   downloadAudio: async (meetingId: string): Promise<{ blob: Blob; filename: string }> => {
     const url = `${API_BASE_URL}/api/meetings/${meetingId}/audio`;

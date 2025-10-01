@@ -6,6 +6,7 @@ import {
   MeetingDetails,
 } from '../services/api';
 import MeetingRecorder from './MeetingRecorder';
+import { useAuth } from '../contexts/AuthContext';
 
 type Props = {
   fundraisingId?: string;
@@ -20,6 +21,7 @@ const defaultTypes: MeetingCreateRequest['meeting_type'][] = [
 ];
 
 const MeetingManager: React.FC<Props> = ({ fundraisingId: fundraisingIdProp }) => {
+  const { hasAnyRole } = useAuth();
   const [fundraisingId, setFundraisingId] = useState(fundraisingIdProp || '');
   const isEmbedded = Boolean(fundraisingIdProp);
   const [meetings, setMeetings] = useState<MeetingListItem[]>([]);
@@ -72,6 +74,32 @@ const MeetingManager: React.FC<Props> = ({ fundraisingId: fundraisingIdProp }) =
       setLoading(false);
     }
   };
+
+  const deleteMeeting = async (meetingId: string) => {
+    if (!window.confirm('Are you sure you want to delete this meeting? This action cannot be undone.')) {
+      return;
+    }
+    
+    setLoading(true);
+    setError(null);
+    try {
+      await meetingsApi.delete(meetingId);
+      // If the deleted meeting was selected, clear selection
+      if (selectedMeetingId === meetingId) {
+        setSelectedMeetingId(null);
+        setMeetingDetails(null);
+      }
+      // Reload the meetings list
+      await loadMeetings();
+      setSuccessMsg('Meeting deleted successfully.');
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (e: any) {
+      setError(e?.message || 'Failed to delete meeting');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const loadMeetingDetails = async (id: string) => {
     try {
       const details = await meetingsApi.details(id);
@@ -408,7 +436,7 @@ const MeetingManager: React.FC<Props> = ({ fundraisingId: fundraisingIdProp }) =
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scheduled</th>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Audio</th>
-                  <th className="px-4 py-2"></th>
+                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -419,15 +447,26 @@ const MeetingManager: React.FC<Props> = ({ fundraisingId: fundraisingIdProp }) =
                     <td className="px-4 py-2">{new Date(m.scheduled_date).toLocaleString()}</td>
                     <td className="px-4 py-2">{m.has_audio ? 'Yes' : 'No'}</td>
                     <td className="px-4 py-2 text-right">
-                      <button
-                        className={`px-3 py-1 rounded ${selectedMeetingId === m.id ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800'}`}
-                        onClick={() => {
-                          setSelectedMeetingId(m.id);
-                          loadMeetingDetails(m.id);
-                        }}
-                      >
-                        {selectedMeetingId === m.id ? 'Selected' : 'Select'}
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          className={`px-3 py-1 rounded ${selectedMeetingId === m.id ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800'}`}
+                          onClick={() => {
+                            setSelectedMeetingId(m.id);
+                            loadMeetingDetails(m.id);
+                          }}
+                        >
+                          {selectedMeetingId === m.id ? 'Selected' : 'Select'}
+                        </button>
+                        {hasAnyRole(['Admin', 'Super Admin']) && (
+                          <button
+                            className="px-3 py-1 rounded bg-red-100 text-red-800 hover:bg-red-200"
+                            onClick={() => deleteMeeting(m.id)}
+                            disabled={loading}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
