@@ -51,7 +51,7 @@ class Task(Document):
     fundraising_id: Optional[str] = Field(None, description="Related fundraising ID")
     
     # Assignment
-    assigned_to: str = Field(..., description="Assigned user ID")
+    assigned_to: Optional[str] = Field(None, description="Assigned user ID")
     assigned_by: Optional[str] = Field(None, description="User who assigned the task")
     
     # Timeline

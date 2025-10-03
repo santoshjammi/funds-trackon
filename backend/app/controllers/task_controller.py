@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from app.models.task import Task, TaskStatus, TaskPriority
 from beanie import PydanticObjectId
 
-task_router = APIRouter(prefix="/tasks", tags=["tasks"])
+task_router = APIRouter(tags=["tasks"])
 
 # Request/Response models
 class TaskCreate(BaseModel):
@@ -37,11 +37,10 @@ async def create_task(task_data: TaskCreate):
 
 @task_router.get("/", response_model=List[dict])
 async def get_all_tasks(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(10000, ge=1, le=10000)
+    skip: int = Query(0, ge=0)
 ):
     """Get all tasks"""
-    tasks = await Task.find_all().skip(skip).limit(limit).to_list()
+    tasks = await Task.find_all().skip(skip).to_list()
     return [task.dict() for task in tasks]
 
 @task_router.get("/{task_id}", response_model=dict)

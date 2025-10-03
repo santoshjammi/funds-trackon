@@ -99,20 +99,21 @@ export interface DashboardSummary {
 }
 
 export interface FundraisingAnalytics {
-  priority_distribution: Record<string, number>;
-  category_breakdown: Record<string, number>;
-  status_analysis: Record<string, number>;
+  status_distribution: Record<string, number>;
+  investor_type_breakdown: Record<string, number>;
+  organization_analysis: Record<string, number>;
+  pipeline_stages: Record<string, number>;
   referral_effectiveness: Record<string, number>;
   contact_data_quality: {
-    with_contact_person: number;
-    with_phone: number;
-    with_email: number;
-    complete_contact_info: number;
+    with_reference: number;
+    with_investor_type: number;
+    with_responsibility: number;
+    with_request_amount: number;
   };
   pipeline_health: {
-    total_targets: number;
+    total_campaigns: number;
     active_pipeline: number;
-    high_priority_active: number;
+    completed_campaigns: number;
     conversion_indicators: Record<string, number>;
   };
 }
@@ -163,7 +164,7 @@ export interface ContactAnalytics {
   connection_metrics: {
     connected: number;
     not_connected: number;
-    linkedin_connected: number;
+    total_contacts: number;
   };
   data_quality_metrics: {
     with_phone: number;

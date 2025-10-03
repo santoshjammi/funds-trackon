@@ -60,11 +60,47 @@ Based on your existing JSON data structure:
 
 ### Prerequisites
 
+- Docker & Docker Compose
+- Git
+
+### Docker Setup (Recommended)
+
+1. **Clone and setup**:
+   ```bash
+   git clone <repository-url>
+   cd funds-trackon
+   ```
+
+2. **Configure environment**:
+   ```bash
+   # Copy and edit environment file
+   cp .env.example .env
+   # Edit .env with your OpenAI API key and other settings
+   ```
+
+3. **Start the application**:
+   ```bash
+   # Make scripts executable (first time only)
+   chmod +x start.sh stop.sh
+
+   # Start all services
+   ./start.sh
+   ```
+
+4. **Access the application**:
+   - Frontend: http://localhost:3000
+   - Backend API: http://localhost:8000
+   - API Documentation: http://localhost:8000/docs
+
+### Manual Setup (Alternative)
+
+### Manual Setup Requirements
+
 - Python 3.8+
 - Node.js 16+
 - MongoDB 4.4+
 
-### Backend Setup
+#### Backend Setup
 
 ```bash
 # Navigate to backend directory
@@ -85,7 +121,7 @@ cp .env.example .env
 python main_simple.py
 ```
 
-### Frontend Setup
+#### Frontend Setup
 
 ```bash
 # Navigate to frontend directory
@@ -98,7 +134,7 @@ npm install
 PORT=3001 npm start
 ```
 
-### MongoDB Setup
+#### MongoDB Setup
 
 ```bash
 # Install MongoDB (macOS)

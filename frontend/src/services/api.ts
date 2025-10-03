@@ -1,6 +1,3 @@
-// API configuration and base setup
-// Prefer environment override; default to same-origin '' so endpoints like '/api/...'
-// are not double-prefixed when behind Nginx proxying '/api' to backend.
 import { 
   Permission, 
   Role, 
@@ -201,6 +198,43 @@ export interface Organization {
   updated_at?: string;
 }
 
+export interface Opportunity {
+  id?: string;
+  title: string;
+  description?: string;
+  organisation: string;
+  contact_id?: string;
+  estimated_value?: number;
+  probability?: number;
+  status: string;
+  priority: string;
+  assigned_to?: string;
+  target_close_date?: string;
+  actual_close_date?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Task {
+  id?: string;
+  title: string;
+  description?: string;
+  task_type: string;
+  status: string;
+  priority: string;
+  due_date?: string;
+  completed_date?: string;
+  assigned_to?: string;
+  assigned_by?: string;
+  contact_id?: string;
+  opportunity_id?: string;
+  fundraising_id?: string;
+  tags?: string[];
+  notes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // Meetings types
 export interface MeetingAttendee {
   name: string;
@@ -364,7 +398,7 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
 
 // Contact API functions
 export const contactsApi = {
-  getAll: (limit: number = 10000): Promise<Contact[]> => apiRequest<Contact[]>(`/api/contacts/?limit=${limit}`),
+  getAll: (): Promise<Contact[]> => apiRequest<Contact[]>('/api/contacts/'),
   getById: (id: string): Promise<Contact> => apiRequest<Contact>(`/api/contacts/${id}`),
   create: (contact: Omit<Contact, 'id'>): Promise<{message: string, id: string}> => 
     apiRequest<{message: string, id: string}>('/api/contacts/', {
@@ -384,7 +418,7 @@ export const contactsApi = {
 
 // Fundraising API functions
 export const fundraisingApi = {
-  getAll: (): Promise<Fundraising[]> => apiRequest<Fundraising[]>('/api/fundraising/?limit=10000').then(items => items.map((c: any) => ({
+  getAll: (): Promise<Fundraising[]> => apiRequest<Fundraising[]>('/api/fundraising/').then(items => items.map((c: any) => ({
     ...c,
     // prefer new fields if present
     tnifmc_request_inr_cr: c.niveshya_request_inr_cr ?? c.tnifmc_request_inr_cr,
@@ -409,11 +443,45 @@ export const fundraisingApi = {
     apiRequest<{message: string}>(`/api/fundraising/${id}`, {
       method: 'DELETE',
     }),
+  uploadDocument: async (campaignId: string, file: File, description?: string): Promise<{
+    message: string;
+    campaign_id: string;
+    filename: string;
+    original_filename: string;
+    file_size: number;
+    description?: string;
+    notes_updated: boolean;
+  }> => {
+    const url = `${API_BASE_URL}/api/fundraising/${campaignId}/upload`;
+    const form = new FormData();
+    form.append('file', file);
+    if (description) form.append('description', description);
+
+    const headers: Record<string, string> = {};
+    const token = getAuthToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers, // do NOT set Content-Type for FormData
+      body: form,
+    });
+    if (!res.ok) {
+      try {
+        const err = await res.json();
+        throw new Error(err?.detail || `Upload failed: ${res.status}`);
+      } catch {
+        const text = await res.text();
+        throw new Error(text || `Upload failed: ${res.status}`);
+      }
+    }
+    return res.json();
+  },
 };
 
 // Organizations API functions
 export const organizationsApi = {
-  getAll: (): Promise<Organization[]> => apiRequest<Organization[]>('/api/organizations/?limit=10000'),
+  getAll: (): Promise<Organization[]> => apiRequest<Organization[]>('/api/organizations/'),
   getById: (id: string): Promise<Organization> => apiRequest<Organization>(`/api/organizations/${id}`),
   create: (organization: Omit<Organization, 'id'>): Promise<{message: string, id: string}> => 
     apiRequest<{message: string, id: string}>('/api/organizations/', {
@@ -474,7 +542,7 @@ export const authApi = {
 
 // Enhanced Users API functions with password management
 export const usersApi = {
-  getAll: (): Promise<User[]> => apiRequest<User[]>('/api/users/?limit=10000'),
+  getAll: (): Promise<User[]> => apiRequest<User[]>('/api/users/'),
   getById: (id: string): Promise<User> => apiRequest<User>(`/api/users/${id}`),
   update: (id: string, user: Partial<User>): Promise<{message: string}> =>
     apiRequest<{message: string}>(`/api/users/${id}`, {
@@ -729,6 +797,91 @@ export const meetingsApi = {
     const blob = await res.blob();
     return { blob, filename };
   },
+
+  // AI Conversations
+  getMeetingConversations: (meetingId: string): Promise<Array<{
+    id: string;
+    user_prompt: string;
+    ai_response: string;
+    asked_by: string;
+    asked_at: string;
+    model_used?: string;
+    tokens_used?: number;
+    context_data?: any;
+  }>> => apiRequest(`/api/meetings/conversations/meeting/${meetingId}`),
+
+  getCampaignConversations: (fundraisingId: string): Promise<Array<{
+    id: string;
+    user_prompt: string;
+    ai_response: string;
+    asked_by: string;
+    asked_at: string;
+    model_used?: string;
+    tokens_used?: number;
+    context_data?: any;
+  }>> => apiRequest(`/api/meetings/conversations/campaign/${fundraisingId}`),
+
+  getUserConversations: (limit?: number): Promise<Array<{
+    id: string;
+    conversation_type: string;
+    meeting_id?: string;
+    fundraising_id?: string;
+    user_prompt: string;
+    ai_response: string;
+    asked_at: string;
+    model_used?: string;
+    tokens_used?: number;
+  }>> => apiRequest(`/api/meetings/conversations/user${limit ? `?limit=${limit}` : ''}`),
+};
+
+export const opportunitiesApi = {
+  getAll: (): Promise<Opportunity[]> => 
+    apiRequest<Opportunity[]>('/api/opportunities'),
+  
+  getById: (id: string): Promise<Opportunity> => 
+    apiRequest<Opportunity>(`/api/opportunities/${id}`),
+  
+  create: (opportunity: Omit<Opportunity, 'id'>): Promise<{message: string; id: string}> => 
+    apiRequest<{message: string; id: string}>('/api/opportunities', {
+      method: 'POST',
+      body: JSON.stringify(opportunity),
+    }),
+  
+  update: (id: string, opportunity: Partial<Opportunity>): Promise<{message: string}> => 
+    apiRequest<{message: string}>(`/api/opportunities/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(opportunity),
+    }),
+  
+  delete: (id: string): Promise<{message: string}> => 
+    apiRequest<{message: string}>(`/api/opportunities/${id}`, {
+      method: 'DELETE',
+    }),
+};
+
+export const tasksApi = {
+  getAll: (): Promise<Task[]> => 
+    apiRequest<Task[]>('/api/tasks'),
+  
+  getById: (id: string): Promise<Task> => 
+    apiRequest<Task>(`/api/tasks/${id}`),
+  
+  create: (task: Omit<Task, 'id'>): Promise<{message: string; id: string}> => 
+    apiRequest<{message: string; id: string}>('/api/tasks', {
+      method: 'POST',
+      body: JSON.stringify(task),
+    }),
+  
+  update: (id: string, task: Partial<Task>): Promise<{message: string}> => 
+    apiRequest<{message: string}>(`/api/tasks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(task),
+    }),
+  
+  delete: (id: string): Promise<{message: string}> => 
+    apiRequest<{message: string}>(`/api/tasks/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 // Health check function

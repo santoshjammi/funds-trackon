@@ -127,8 +127,11 @@ async def login_username(user_credentials: UserLoginByUsername):
     user = await User.find_one({"username": user_credentials.username})
     print(f"DEBUG: User found: {user is not None}")
     if user:
-        print(f"DEBUG: User details - username: '{user.username}', password_hash: '{user.password_hash}', active: {user.is_active}")
+        print(f"DEBUG: User details - username: '{user.username}', password_hash: '{repr(user.password_hash)}', active: {user.is_active}")
+        print(f"DEBUG: Incoming password: '{repr(user_credentials.password)}'")
         print(f"DEBUG: Password match: {user.password_hash == user_credentials.password}")
+        print(f"DEBUG: Password hash type: {type(user.password_hash)}")
+        print(f"DEBUG: Incoming password type: {type(user_credentials.password)}")
     
     # Temporary plain text password check for testing
     if not user or not user.password_hash or user.password_hash != user_credentials.password:

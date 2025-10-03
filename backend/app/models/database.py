@@ -57,6 +57,7 @@ async def init_db():
         from app.models.organization import Organization
         from app.models.meeting import Meeting
         from app.models.role import Role, Permission
+        from app.models.ai_conversation import AIConversation
         
         # Initialize Beanie with document models
         await init_beanie(
@@ -71,7 +72,8 @@ async def init_db():
                 Organization,
                 Meeting,
                 Role,
-                Permission
+                Permission,
+                AIConversation
             ]
         )
         

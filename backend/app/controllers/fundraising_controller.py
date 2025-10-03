@@ -2,16 +2,38 @@
 Fundraising Controller - Handles fundraising campaign endpoints
 """
 
+import os
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
 from pydantic import BaseModel
 from app.models.fundraising import Fundraising, FundraisingStatus, InvestorType
+from app.models.user import User
+from app.controllers.auth_controller import get_current_user
 from app.utils.config import get_settings
 from beanie import PydanticObjectId
 from datetime import datetime
+import aiofiles
 
 fundraising_router = APIRouter(tags=["fundraising"])
 settings = get_settings()
+
+# File upload configuration
+DOCUMENTS_DIR = "uploads/documents"
+ALLOWED_DOCUMENT_TYPES = [
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "text/plain",
+    "text/csv",
+    "image/jpeg",
+    "image/png",
+    "image/gif"
+]
+
+# Ensure upload directory exists
+os.makedirs(DOCUMENTS_DIR, exist_ok=True)
 
 # Response models
 class FundraisingResponse(BaseModel):
@@ -85,7 +107,6 @@ async def create_fundraising_campaign(campaign_data: FundraisingCreate):
 @fundraising_router.get("/", response_model=List[FundraisingResponse])
 async def get_all_campaigns(
     skip: int = Query(0, ge=0),
-    limit: int = Query(10000, ge=1, le=10000),
     status: Optional[FundraisingStatus] = Query(None, description="Filter by status"),
     organisation: Optional[str] = Query(None, description="Filter by organisation")
 ):
@@ -97,7 +118,7 @@ async def get_all_campaigns(
         if organisation:
             query["organisation"] = {"$regex": organisation, "$options": "i"}
         
-        campaigns = await Fundraising.find(query).skip(skip).limit(limit).to_list()
+        campaigns = await Fundraising.find(query).skip(skip).to_list()
         
         # Convert to response format
         response = []
@@ -232,6 +253,78 @@ async def delete_campaign(campaign_id: PydanticObjectId):
     
     await campaign.delete()
     return {"message": "Campaign deleted successfully"}
+
+@fundraising_router.post("/{campaign_id}/upload", response_model=dict)
+async def upload_campaign_document(
+    campaign_id: str,
+    file: UploadFile = File(...),
+    description: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Upload a document and append it to the campaign notes"""
+
+    # Validate campaign exists
+    if not PydanticObjectId.is_valid(campaign_id):
+        raise HTTPException(status_code=400, detail="Invalid campaign ID format")
+
+    campaign = await Fundraising.get(PydanticObjectId(campaign_id))
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    # Validate file type
+    content_type = file.content_type or ""
+    if content_type not in ALLOWED_DOCUMENT_TYPES:
+        # Allow files with common extensions even if content-type is not set
+        file_ext = os.path.splitext(file.filename or "")[1].lower()
+        allowed_exts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv', '.jpg', '.jpeg', '.png', '.gif']
+        if file_ext not in allowed_exts:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type. Allowed: PDF, Word, Excel, Text, CSV, Images"
+            )
+
+    # Generate unique filename
+    import uuid
+    file_extension = os.path.splitext(file.filename or "")[1]
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join(DOCUMENTS_DIR, unique_filename)
+
+    # Save file
+    try:
+        async with aiofiles.open(file_path, 'wb') as f:
+            content = await file.read()
+            await f.write(content)
+            file_size = len(content)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save file: {str(e)}"
+        )
+
+    # Create document reference
+    doc_reference = f"[Document: {file.filename} - {description or 'Uploaded file'} - {file_size} bytes]"
+
+    # Append to campaign notes
+    current_notes = campaign.notes or ""
+    if current_notes:
+        updated_notes = f"{current_notes}\n\n{doc_reference}"
+    else:
+        updated_notes = doc_reference
+
+    # Update campaign
+    campaign.notes = updated_notes
+    campaign.updated_at = datetime.utcnow()
+    await campaign.save()
+
+    return {
+        "message": "Document uploaded and added to campaign notes",
+        "campaign_id": campaign_id,
+        "filename": unique_filename,
+        "original_filename": file.filename,
+        "file_size": file_size,
+        "description": description,
+        "notes_updated": True
+    }
 
 @fundraising_router.get("/status/{status}", response_model=List[dict])
 async def get_campaigns_by_status(status: FundraisingStatus):

@@ -215,12 +215,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToContacts, onNavigateT
   }
 
   // Transform data for charts
-  const priorityData: ChartData[] = Object.entries(fundraisingAnalytics.priority_distribution).map(([name, value]) => ({
-    name: name === 'A' ? 'High (A)' : name === 'B' ? 'Medium (B)' : name === 'C' ? 'Low (C)' : name,
+  const priorityData: ChartData[] = Object.entries(fundraisingAnalytics.status_distribution).map(([name, value]) => ({
+    name: name === 'Open' ? 'Active' : name === 'Closed' ? 'Completed' : name === 'Invested' ? 'Successful' : name,
     value,
   }));
 
-  const categoryData: ChartData[] = Object.entries(fundraisingAnalytics.category_breakdown)
+  const categoryData: ChartData[] = Object.entries(fundraisingAnalytics.investor_type_breakdown)
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8)
     .map(([name, value]) => ({
@@ -492,11 +492,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToContacts, onNavigateT
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">High Priority</span>
-                <span className="text-sm font-medium">{fundraisingAnalytics.pipeline_health.high_priority_active}</span>
+                <span className="text-sm font-medium">{fundraisingAnalytics.pipeline_health.conversion_indicators.advanced}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">With Contact Info</span>
-                <span className="text-sm font-medium">{fundraisingAnalytics.contact_data_quality.complete_contact_info}</span>
+                <span className="text-sm font-medium">{Math.round((fundraisingAnalytics.contact_data_quality.with_reference / fundraisingAnalytics.pipeline_health.total_campaigns) * 100)}%</span>
               </div>
               <div className="pt-2 border-t">
                 <div className="flex justify-between">

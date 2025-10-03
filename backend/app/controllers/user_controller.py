@@ -70,12 +70,11 @@ class UserUpdate(BaseModel):
 
 @user_router.get("/", response_model=List[UserResponse])
 async def get_all_users(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(10000, ge=1, le=10000)
+    skip: int = Query(0, ge=0)
 ):
     """Get all users"""
     try:
-        users = await User.find_all().skip(skip).limit(limit).to_list()
+        users = await User.find_all().skip(skip).to_list()
         return [
             UserResponse(
                 id=str(user.id),

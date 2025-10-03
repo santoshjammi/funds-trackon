@@ -32,7 +32,7 @@ class User(Document):
     employment_type: EmploymentType = Field(..., description="Type of employment")
     name: str = Field(..., description="Full name")
     designation: str = Field(..., description="Job designation")
-    email: EmailStr = Field(..., description="Email address", unique=True)
+    email: Optional[EmailStr] = Field(None, description="Email address", unique=True)
     phone: Optional[str] = Field(None, description="Phone number")
     notes: Optional[str] = Field(None, description="Additional notes")
     

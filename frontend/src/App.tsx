@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { contactsApi, fundraisingApi, usersApi, organizationsApi, healthCheck, Contact, Fundraising, User, Organization } from './services/api';
+import { contactsApi, fundraisingApi, usersApi, organizationsApi, opportunitiesApi, tasksApi, healthCheck, Contact, Fundraising, User, Organization, Opportunity, Task } from './services/api';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import MeetingManager from './components/MeetingManager';
 import Login from './components/Login';
@@ -7,14 +7,18 @@ import UserProfile from './components/UserProfile';
 import AdminSettings from './components/AdminSettings';
 import Dashboard from './components/Dashboard';
 import Reports from './components/Reports';
+import OpportunityList from './components/OpportunityList';
+import TaskList from './components/TaskList';
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, loading: authLoading, login, logout, hasAnyRole } = useAuth();
-  const [activeView, setActiveView] = useState<'dashboard' | 'contacts' | 'contact-detail' | 'organizations' | 'organization-detail' | 'fundraising' | 'fundraising-detail' | 'users' | 'user-detail' | 'user-profile' | 'admin-settings' | 'reports'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'contacts' | 'contact-detail' | 'organizations' | 'organization-detail' | 'opportunities' | 'opportunity-detail' | 'tasks' | 'task-detail' | 'fundraising' | 'fundraising-detail' | 'users' | 'user-detail' | 'user-profile' | 'admin-settings' | 'reports'>('dashboard');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [fundraising, setFundraising] = useState<Fundraising[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [opportunities, setOpportunities] = useState<any[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [backendStatus, setBackendStatus] = useState<'checking' | 'connected' | 'error'>('checking');
@@ -39,6 +43,18 @@ const AppContent: React.FC = () => {
   
   // Current logged in user state (for profile view)
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  
+  // Opportunity detail state
+  const [selectedOpportunity, setSelectedOpportunity] = useState<any | null>(null);
+  const [isOppEditMode, setIsOppEditMode] = useState<boolean>(false);
+  const [oppEditFormData, setOppEditFormData] = useState<any | null>(null);
+  const [showOppDeleteConfirm, setShowOppDeleteConfirm] = useState<boolean>(false);
+  
+  // Task detail state
+  const [selectedTask, setSelectedTask] = useState<any | null>(null);
+  const [isTaskEditMode, setIsTaskEditMode] = useState<boolean>(false);
+  const [taskEditFormData, setTaskEditFormData] = useState<any | null>(null);
+  const [showTaskDeleteConfirm, setShowTaskDeleteConfirm] = useState<boolean>(false);
   
   // Search and sort state for contacts
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -98,6 +114,14 @@ const AppContent: React.FC = () => {
             const organizationData = await organizationsApi.getAll();
             setOrganizations(organizationData);
             break;
+          case 'opportunities':
+            const opportunityData = await opportunitiesApi.getAll();
+            setOpportunities(opportunityData);
+            break;
+          case 'tasks':
+            const taskData = await tasksApi.getAll();
+            setTasks(taskData);
+            break;
           case 'fundraising':
             const fundraisingData = await fundraisingApi.getAll();
             setFundraising(fundraisingData);
@@ -115,7 +139,7 @@ const AppContent: React.FC = () => {
     };
 
     // Only fetch data for views that need it (not detail views which have their own data)
-    if (['dashboard', 'contacts', 'organizations', 'fundraising', 'users', 'reports'].includes(activeView)) {
+    if (['dashboard', 'contacts', 'organizations', 'opportunities', 'tasks', 'fundraising', 'users', 'reports'].includes(activeView)) {
       fetchData();
     }
   }, [activeView, backendStatus]);
@@ -2481,6 +2505,294 @@ const AppContent: React.FC = () => {
     );
   };
 
+  const renderOpportunityDetail = () => {
+    if (!selectedOpportunity) return null;
+
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Opportunity Details</h2>
+          <div className="flex space-x-3">
+            {!isOppEditMode ? (
+              <>
+                <button
+                  onClick={() => {
+                    setIsOppEditMode(true);
+                    setOppEditFormData(selectedOpportunity);
+                  }}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  ✏️ Edit
+                </button>
+                <button
+                  onClick={() => setShowOppDeleteConfirm(true)}
+                  className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
+                >
+                  🗑️ Delete
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    // TODO: Implement save logic
+                    setIsOppEditMode(false);
+                  }}
+                  disabled={loading}
+                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Saving...' : '💾 Save'}
+                </button>
+                <button
+                  onClick={() => {
+                    setIsOppEditMode(false);
+                    setOppEditFormData(null);
+                  }}
+                  className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
+                >
+                  ❌ Cancel
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => setActiveView('opportunities')}
+              className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
+            >
+              ← Back to Opportunities
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Title</label>
+                  <p className="text-sm text-gray-900">{selectedOpportunity.title || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Organization</label>
+                  <p className="text-sm text-gray-900">{selectedOpportunity.organisation || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Status</label>
+                  <p className="text-sm text-gray-900">{selectedOpportunity.status || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Priority</label>
+                  <p className="text-sm text-gray-900">{selectedOpportunity.priority || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Financial Details</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Estimated Value</label>
+                  <p className="text-sm text-gray-900">{selectedOpportunity.estimated_value ? `$${selectedOpportunity.estimated_value.toLocaleString()}` : 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Probability</label>
+                  <p className="text-sm text-gray-900">{selectedOpportunity.probability ? `${selectedOpportunity.probability}%` : 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Expected Close Date</label>
+                  <p className="text-sm text-gray-900">{selectedOpportunity.target_close_date || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          {selectedOpportunity.description && (
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-4">Description</h3>
+              <p className="text-sm text-gray-700">{selectedOpportunity.description}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Delete Confirmation Modal */}
+        {showOppDeleteConfirm && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3 text-center">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Confirm Deletion</h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Are you sure you want to delete this opportunity "{selectedOpportunity.title}"?
+                  This action cannot be undone.
+                </p>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowOppDeleteConfirm(false)}
+                    className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      // TODO: Implement delete logic
+                      setShowOppDeleteConfirm(false);
+                      setActiveView('opportunities');
+                    }}
+                    disabled={loading}
+                    className="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {loading ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderTaskDetail = () => {
+    if (!selectedTask) return null;
+
+    return (
+      <div>
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Task Details</h2>
+          <div className="flex space-x-3">
+            {!isTaskEditMode ? (
+              <>
+                <button
+                  onClick={() => {
+                    setIsTaskEditMode(true);
+                    setTaskEditFormData(selectedTask);
+                  }}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  ✏️ Edit
+                </button>
+                <button
+                  onClick={() => setShowTaskDeleteConfirm(true)}
+                  className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
+                >
+                  🗑️ Delete
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => {
+                    // TODO: Implement save logic
+                    setIsTaskEditMode(false);
+                  }}
+                  disabled={loading}
+                  className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
+                >
+                  {loading ? 'Saving...' : '💾 Save'}
+                </button>
+                <button
+                  onClick={() => {
+                    setIsTaskEditMode(false);
+                    setTaskEditFormData(null);
+                  }}
+                  className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
+                >
+                  ❌ Cancel
+                </button>
+              </>
+            )}
+            <button
+              onClick={() => setActiveView('tasks')}
+              className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
+            >
+              ← Back to Tasks
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Title</label>
+                  <p className="text-sm text-gray-900">{selectedTask.title || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Type</label>
+                  <p className="text-sm text-gray-900">{selectedTask.task_type || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Status</label>
+                  <p className="text-sm text-gray-900">{selectedTask.status || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Priority</label>
+                  <p className="text-sm text-gray-900">{selectedTask.priority || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold mb-4">Assignment & Timeline</h3>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Assigned To</label>
+                  <p className="text-sm text-gray-900">{selectedTask.assigned_to || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Due Date</label>
+                  <p className="text-sm text-gray-900">{selectedTask.due_date || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Created Date</label>
+                  <p className="text-sm text-gray-900">{selectedTask.created_at || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          {selectedTask.description && (
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold mb-4">Description</h3>
+              <p className="text-sm text-gray-700">{selectedTask.description}</p>
+            </div>
+          )}
+        </div>
+
+        {/* Delete Confirmation Modal */}
+        {showTaskDeleteConfirm && (
+          <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+            <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+              <div className="mt-3 text-center">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Confirm Deletion</h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Are you sure you want to delete this task "{selectedTask.title}"?
+                  This action cannot be undone.
+                </p>
+                <div className="flex justify-end space-x-3">
+                  <button
+                    onClick={() => setShowTaskDeleteConfirm(false)}
+                    className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      // TODO: Implement delete logic
+                      setShowTaskDeleteConfirm(false);
+                      setActiveView('tasks');
+                    }}
+                    disabled={loading}
+                    className="px-4 py-2 text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {loading ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderUsers = () => {
     const processedUsers = getProcessedUsers();
     
@@ -2755,6 +3067,44 @@ const AppContent: React.FC = () => {
         return renderUserProfile();
       case 'admin-settings':
         return renderAdminSettings();
+      case 'opportunities':
+        return (
+          <OpportunityList
+            onSelectOpportunity={(opportunity) => {
+              setSelectedOpportunity(opportunity);
+              setIsOppEditMode(true);
+              setOppEditFormData(opportunity);
+              setActiveView('opportunity-detail');
+            }}
+            onCreateNew={() => {
+              setSelectedOpportunity(null);
+              setIsOppEditMode(false);
+              setOppEditFormData(null);
+              setActiveView('opportunity-detail');
+            }}
+          />
+        );
+      case 'tasks':
+        return (
+          <TaskList
+            onSelectTask={(task) => {
+              setSelectedTask(task);
+              setIsTaskEditMode(true);
+              setTaskEditFormData(task);
+              setActiveView('task-detail');
+            }}
+            onCreateNew={() => {
+              setSelectedTask(null);
+              setIsTaskEditMode(false);
+              setTaskEditFormData(null);
+              setActiveView('task-detail');
+            }}
+          />
+        );
+      case 'opportunity-detail':
+        return renderOpportunityDetail();
+      case 'task-detail':
+        return renderTaskDetail();
       default:
         return <Dashboard 
           onNavigateToContacts={(filter) => {

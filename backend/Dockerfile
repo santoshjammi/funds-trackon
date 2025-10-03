@@ -1,6 +1,6 @@
 # Backend Dockerfile for Niveshya Lead Management System
 
-FROM python:3.11-slim AS base
+FROM python:3.13-slim AS base
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -19,6 +19,9 @@ RUN pip install --upgrade pip && pip install -r /app/requirements.txt
 
 # Copy application code
 COPY backend /app
+
+# Copy .env file from project root
+COPY .env /app/.env
 
 # Create uploads directory for media
 RUN mkdir -p /app/uploads/audio /app/uploads/images /app/uploads/dubs
