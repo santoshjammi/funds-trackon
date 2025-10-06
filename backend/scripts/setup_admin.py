@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from app.models.database import init_db, close_mongo_connection
-from app.models.user import User, UserRole, EmploymentType
+from app.models.user import User, EmploymentType
 from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -35,16 +35,27 @@ async def setup_admin_user():
             print(f"   Name: {existing_admin.name}")
             print(f"   Username: {existing_admin.username}")
             print(f"   Has Password: {'Yes' if existing_admin.password_hash else 'No'}")
-            print(f"   Roles: {existing_admin.roles}")
+            print(f"   Roles: {existing_admin.get_role_names()}")
             
-            # Update password if not set
-            if not existing_admin.password_hash:
-                password = "admin123"  # Default password
-                existing_admin.password_hash = pwd_context.hash(password)
-                existing_admin.roles = [UserRole.ADMIN, UserRole.MANAGER]
+            # Update if missing username or password
+            needs_update = False
+            if not existing_admin.username:
                 existing_admin.username = "admin"
+                needs_update = True
+            # Always update password to ensure it's correct
+            password = "admin123"  # Default password
+            existing_admin.password_hash = pwd_context.hash(password)
+            needs_update = True
+            if not existing_admin.has_role("admin"):
+                existing_admin.add_role("admin", "admin")
+                needs_update = True
+            if not existing_admin.has_role("manager"):
+                existing_admin.add_role("manager", "manager")
+                needs_update = True
+                
+            if needs_update:
                 await existing_admin.save()
-                print(f"✅ Set password and admin role for existing user")
+                print(f"✅ Updated admin user")
                 print(f"   Username: admin")
                 print(f"   Password: admin123")
         else:
@@ -58,9 +69,12 @@ async def setup_admin_user():
                 phone="99674 00111",
                 username="admin",
                 password_hash=pwd_context.hash("admin123"),
-                roles=[UserRole.ADMIN, UserRole.MANAGER],
                 is_active=True
             )
+            
+            # Add admin and manager roles
+            admin_user.add_role("admin", "admin")
+            admin_user.add_role("manager", "manager")
             
             await admin_user.insert()
             print("✅ Created new admin user:")
@@ -77,14 +91,14 @@ async def setup_admin_user():
                 "email": "gana.sk@tnifmc.com",
                 "username": "gana.sk",
                 "designation": "Head - Operations & Partnerships",
-                "roles": [UserRole.MANAGER]
+                "role_name": "manager"
             },
             {
                 "name": "Karthic Ramamoorthy", 
                 "email": "karthic.r@tnifmc.com",
                 "username": "karthic.r",
                 "designation": "Investment Analyst",
-                "roles": [UserRole.ANALYST]
+                "role_name": "analyst"
             }
         ]
         
@@ -95,7 +109,7 @@ async def setup_admin_user():
                 if not existing_user.password_hash:
                     existing_user.password_hash = pwd_context.hash("password123")
                     existing_user.username = user_data["username"]
-                    existing_user.roles = user_data["roles"]
+                    existing_user.add_role(user_data["role_name"], user_data["role_name"])
                     await existing_user.save()
                     print(f"✅ Updated user: {user_data['username']} / password123")
             else:
@@ -108,9 +122,9 @@ async def setup_admin_user():
                     email=user_data["email"],
                     username=user_data["username"],
                     password_hash=pwd_context.hash("password123"),
-                    roles=user_data["roles"],
                     is_active=True
                 )
+                new_user.add_role(user_data["role_name"], user_data["role_name"])
                 await new_user.insert()
                 print(f"✅ Created user: {user_data['username']} / password123")
         

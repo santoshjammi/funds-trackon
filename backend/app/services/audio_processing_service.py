@@ -9,6 +9,7 @@ import asyncio
 from datetime import datetime
 import json
 import re
+import requests
 
 from app.models.meeting import Meeting, AudioProcessingStatus
 
@@ -157,7 +158,7 @@ class AudioProcessingService:
                 "opportunities": ["AI-powered insights generated"]
             }
 
-    async def generate_meeting_insights(self, meeting_id: str, custom_prompt: str) -> Dict:
+    async def generate_meeting_insights(self, meeting_id: str, custom_prompt: str, user_id: Optional[str] = None) -> Dict:
         """Generate custom insights from meeting transcript using custom prompt"""
 
         meeting = await Meeting.get(meeting_id)
@@ -187,9 +188,31 @@ class AudioProcessingService:
             max_tokens=1500
         )
 
+        ai_response = response.choices[0].message.content.strip()
+
+        # Save conversation to database
+        if user_id:
+            from app.models.ai_conversation import AIConversation, ConversationType
+            conversation = AIConversation(
+                conversation_type=ConversationType.MEETING,
+                meeting_id=meeting_id,
+                user_prompt=custom_prompt,
+                ai_response=ai_response,
+                context_data={
+                    "transcript_length": len(meeting.audio_recording.transcript or ""),
+                    "meeting_title": meeting.title,
+                    "meeting_type": meeting.meeting_type,
+                    "meeting_date": meeting.scheduled_date.isoformat() if meeting.scheduled_date else None
+                },
+                asked_by=user_id,
+                model_used="gpt-4",
+                tokens_used=getattr(response, 'usage', {}).get('total_tokens')
+            )
+            await conversation.insert()
+
         return {
             "custom_prompt": custom_prompt,
-            "response": response.choices[0].message.content.strip(),
+            "response": ai_response,
             "generated_at": datetime.utcnow()
         }
 
@@ -221,19 +244,26 @@ class AudioProcessingService:
         if not getattr(self.openai_client, "api_key", None) and not os.getenv("OPENAI_API_KEY"):
             raise RuntimeError("OpenAI API key not configured. Provide X-OpenAI-API-Key header or set OPENAI_API_KEY.")
 
-        # Generate image using OpenAI Images API (DALL·E style)
+        # Generate image using OpenAI Images API (DALL·E)
         img = self.openai_client.images.generate(
-            model="gpt-image-1",
+            model="dall-e-3",
             prompt=image_prompt,
             size="1024x1024",
-            response_format="b64_json",
+            quality="standard",
+            n=1
         )
-        b64 = img.data[0].b64_json
-        if not b64:
+
+        # Get image URL and download it
+        image_url = img.data[0].url
+        if not image_url:
             raise RuntimeError("Failed to generate image")
 
-        import base64
-        png_bytes = base64.b64decode(b64)
+        import requests
+        response = requests.get(image_url)
+        if response.status_code != 200:
+            raise RuntimeError(f"Failed to download image: {response.status_code}")
+
+        png_bytes = response.content
         out_dir = images_dir or self.images_dir
         os.makedirs(out_dir, exist_ok=True)
         filename = f"{meeting_id}_infographic.png"
@@ -243,7 +273,7 @@ class AudioProcessingService:
 
         return {"filename": filename, "path": path}
 
-    async def generate_campaign_insights(self, fundraising_id: str, custom_prompt: str, meeting_ids: Optional[List[str]] = None) -> Dict:
+    async def generate_campaign_insights(self, fundraising_id: str, custom_prompt: str, meeting_ids: Optional[List[str]] = None, user_id: Optional[str] = None) -> Dict:
         """Generate insights across multiple meetings in a fundraising campaign.
         Prefers AI summaries and key points; falls back to notes or a truncated transcript.
         """
@@ -271,7 +301,8 @@ class AudioProcessingService:
             if m.ai_summary:
                 parts.append(f"AI Summary: {truncate(m.ai_summary, 800)}")
             if m.ai_key_points:
-                parts.append(f"AI Key Points: {truncate('\n'.join(m.ai_key_points), 800)}")
+                joined_points = "\n".join(m.ai_key_points)
+                parts.append(f"AI Key Points: {truncate(joined_points, 800)}")
             if m.notes:
                 parts.append(f"Notes: {truncate(m.notes, 800)}")
             # Fallback to transcript if present
@@ -309,9 +340,31 @@ class AudioProcessingService:
             max_tokens=1200
         )
 
+        ai_response = response.choices[0].message.content.strip()
+
+        # Save conversation to database
+        if user_id:
+            from app.models.ai_conversation import AIConversation, ConversationType
+            conversation = AIConversation(
+                conversation_type=ConversationType.CAMPAIGN,
+                fundraising_id=fundraising_id,
+                user_prompt=custom_prompt,
+                ai_response=ai_response,
+                context_data={
+                    "meetings_count": len(meetings),
+                    "meeting_ids": [str(m.id) for m in meetings],
+                    "context_length": len(context),
+                    "fundraising_organisation": meetings[0].fundraising_id if meetings else None
+                },
+                asked_by=user_id,
+                model_used="gpt-4",
+                tokens_used=getattr(response, 'usage', {}).get('total_tokens')
+            )
+            await conversation.insert()
+
         return {
             "custom_prompt": custom_prompt,
-            "response": response.choices[0].message.content.strip(),
+            "response": ai_response,
             "generated_at": datetime.utcnow(),
             "meetings_used": [str(m.id) for m in meetings],
         }

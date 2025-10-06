@@ -15,10 +15,15 @@ from app.models.meeting import Meeting, MeetingType, MeetingStatus, AudioProcess
 from app.models.fundraising import Fundraising
 from app.models.contact import Contact
 from app.models.user import User
+from app.models.role import PermissionType
+from app.models.ai_conversation import AIConversation, ConversationType
 from app.controllers.auth_controller import get_current_user
+from app.utils.rbac import require_permissions
 from app.services.audio_processing_service import AudioProcessingService
+from app.utils.config import get_settings
 
 meeting_router = APIRouter(tags=["meetings"])
+settings = get_settings()
 
 # Audio upload configuration
 UPLOAD_DIR = "uploads/audio"
@@ -48,7 +53,8 @@ class MeetingCreateRequest(BaseModel):
     is_virtual: bool = False
     agenda: Optional[str] = None
     attendees: List[MeetingAttendee] = []
-    tnifmc_representatives: List[str] = []
+    tnifmc_representatives: List[str] = []  # legacy field name for compatibility
+    niveshya_representatives: Optional[List[str]] = None
 
 class MeetingUpdateRequest(BaseModel):
     title: Optional[str] = None
@@ -64,7 +70,8 @@ class MeetingUpdateRequest(BaseModel):
     action_items: Optional[str] = None
     notes: Optional[str] = None
     attendees: Optional[List[MeetingAttendee]] = None
-    tnifmc_representatives: Optional[List[str]] = None
+    tnifmc_representatives: Optional[List[str]] = None  # legacy
+    niveshya_representatives: Optional[List[str]] = None
 
 @meeting_router.post("/", response_model=dict)
 async def create_meeting(
@@ -91,6 +98,8 @@ async def create_meeting(
             )
 
     # Create meeting
+    # Normalize representatives (prefer new field if provided)
+    reps_new = meeting_data.niveshya_representatives if meeting_data.niveshya_representatives is not None else meeting_data.tnifmc_representatives
     meeting = Meeting(
         title=meeting_data.title,
         meeting_type=meeting_data.meeting_type,
@@ -102,7 +111,8 @@ async def create_meeting(
         is_virtual=meeting_data.is_virtual,
         agenda=meeting_data.agenda,
         attendees=meeting_data.attendees,
-        tnifmc_representatives=meeting_data.tnifmc_representatives,
+        tnifmc_representatives=reps_new or [],
+        niveshya_representatives=reps_new or [],
         created_by=str(current_user.id)
     )
 
@@ -201,6 +211,11 @@ async def update_meeting(
 
     # Update fields if provided
     update_dict = update_data.dict(exclude_unset=True)
+    # Normalize representatives
+    if "niveshya_representatives" in update_dict and update_dict["niveshya_representatives"] is not None:
+        update_dict["tnifmc_representatives"] = update_dict.get("niveshya_representatives")
+    elif "tnifmc_representatives" in update_dict and update_dict["tnifmc_representatives"] is not None:
+        update_dict["niveshya_representatives"] = update_dict.get("tnifmc_representatives")
     for field, value in update_dict.items():
         setattr(meeting, field, value)
 
@@ -314,6 +329,7 @@ async def get_audio_recording(
     )
 
 @meeting_router.delete("/{meeting_id}", response_model=dict)
+@require_permissions([PermissionType.DELETE_MEETINGS])
 async def delete_meeting(
     meeting_id: str,
     current_user: User = Depends(get_current_user)
@@ -402,7 +418,7 @@ async def generate_custom_prompt(
 
     service = AudioProcessingService(api_key=x_openai_api_key)
     try:
-        result = await service.generate_meeting_insights(meeting_id, request.prompt)
+        result = await service.generate_meeting_insights(meeting_id, request.prompt, str(current_user.id))
         return {"message": "Prompt processed", **result}
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
@@ -513,7 +529,85 @@ async def generate_campaign_prompt(
 
     service = AudioProcessingService(api_key=x_openai_api_key)
     try:
-        result = await service.generate_campaign_insights(fundraising_id, request.prompt, request.meeting_ids)
+        result = await service.generate_campaign_insights(fundraising_id, request.prompt, request.meeting_ids, str(current_user.id))
         return {"message": "Prompt processed", **result}
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+@meeting_router.get("/conversations/meeting/{meeting_id}", response_model=List[dict])
+async def get_meeting_conversations(
+    meeting_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get all AI conversations for a specific meeting"""
+
+    conversations = await AIConversation.find({
+        "conversation_type": ConversationType.MEETING,
+        "meeting_id": meeting_id
+    }).sort([("asked_at", -1)]).to_list()
+
+    return [
+        {
+            "id": str(conv.id),
+            "user_prompt": conv.user_prompt,
+            "ai_response": conv.ai_response,
+            "asked_by": conv.asked_by,
+            "asked_at": conv.asked_at,
+            "model_used": conv.model_used,
+            "tokens_used": conv.tokens_used,
+            "context_data": conv.context_data
+        }
+        for conv in conversations
+    ]
+
+@meeting_router.get("/conversations/campaign/{fundraising_id}", response_model=List[dict])
+async def get_campaign_conversations(
+    fundraising_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Get all AI conversations for a specific fundraising campaign"""
+
+    conversations = await AIConversation.find({
+        "conversation_type": ConversationType.CAMPAIGN,
+        "fundraising_id": fundraising_id
+    }).sort([("asked_at", -1)]).to_list()
+
+    return [
+        {
+            "id": str(conv.id),
+            "user_prompt": conv.user_prompt,
+            "ai_response": conv.ai_response,
+            "asked_by": conv.asked_by,
+            "asked_at": conv.asked_at,
+            "model_used": conv.model_used,
+            "tokens_used": conv.tokens_used,
+            "context_data": conv.context_data
+        }
+        for conv in conversations
+    ]
+
+@meeting_router.get("/conversations/user", response_model=List[dict])
+async def get_user_conversations(
+    current_user: User = Depends(get_current_user),
+    limit: int = 50
+):
+    """Get all AI conversations for the current user"""
+
+    conversations = await AIConversation.find({
+        "asked_by": str(current_user.id)
+    }).sort([("asked_at", -1)]).limit(limit).to_list()
+
+    return [
+        {
+            "id": str(conv.id),
+            "conversation_type": conv.conversation_type,
+            "meeting_id": conv.meeting_id,
+            "fundraising_id": conv.fundraising_id,
+            "user_prompt": conv.user_prompt,
+            "ai_response": conv.ai_response,
+            "asked_at": conv.asked_at,
+            "model_used": conv.model_used,
+            "tokens_used": conv.tokens_used
+        }
+        for conv in conversations
+    ]

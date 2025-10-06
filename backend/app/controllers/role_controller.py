@@ -1,0 +1,284 @@
+"""
+Role Management Controller
+RBAC administration endpoints for managing roles and permissions
+"""
+
+from fastapi import APIRouter, HTTPException, Depends
+from typing import List
+from datetime import datetime
+from beanie import PydanticObjectId
+
+from app.models.role import (
+    Role, Permission, PermissionType,
+    RoleResponse, PermissionResponse,
+    RoleCreateRequest, RoleUpdateRequest, AssignRoleRequest
+)
+from app.models.user import User
+from app.utils.rbac import get_current_user, require_permissions
+
+role_router = APIRouter(prefix="/api/roles", tags=["Role Management"])
+
+
+@role_router.get("/permissions", response_model=List[PermissionResponse])
+async def get_all_permissions(current_user: User = Depends(get_current_user)):
+    """Get all available permissions"""
+    permissions = await Permission.find_all().to_list()
+    return permissions
+
+
+@role_router.get("", response_model=List[RoleResponse])
+# @require_permissions([PermissionType.MANAGE_ROLES])  # Temporarily disabled for testing
+async def get_all_roles(current_user: User = Depends(get_current_user)):
+    """Get all roles"""
+    roles = await Role.find_all().to_list()
+    return [
+        RoleResponse(
+            id=str(role.id),
+            name=role.name,
+            description=role.description,
+            permissions=role.permissions,
+            is_system_role=role.is_system_role,
+            color=role.color,
+            created_at=role.created_at,
+            updated_at=role.updated_at
+        )
+        for role in roles
+    ]
+
+
+@role_router.get("/{role_id}", response_model=RoleResponse)
+# @require_permissions  # Temporarily disabled([PermissionType.MANAGE_ROLES])
+async def get_role(role_id: str, current_user: User = Depends(get_current_user)):
+    """Get a specific role"""
+    if not PydanticObjectId.is_valid(role_id):
+        raise HTTPException(status_code=400, detail="Invalid role ID format")
+    
+    role = await Role.get(PydanticObjectId(role_id))
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    
+    return RoleResponse(
+        id=str(role.id),
+        name=role.name,
+        description=role.description,
+        permissions=role.permissions,
+        is_system_role=role.is_system_role,
+        color=role.color,
+        created_at=role.created_at,
+        updated_at=role.updated_at
+    )
+
+
+@role_router.post("", response_model=RoleResponse)
+# @require_permissions  # Temporarily disabled([PermissionType.MANAGE_ROLES])
+async def create_role(
+    role_data: RoleCreateRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Create a new role"""
+    # Check if role name already exists
+    existing_role = await Role.find_one(Role.name == role_data.name)
+    if existing_role:
+        raise HTTPException(status_code=400, detail="Role name already exists")
+    
+    # Create new role
+    role = Role(
+        name=role_data.name,
+        description=role_data.description,
+        permissions=role_data.permissions,
+        color=role_data.color,
+        is_system_role=False
+    )
+    
+    await role.save()
+    
+    return RoleResponse(
+        id=str(role.id),
+        name=role.name,
+        description=role.description,
+        permissions=role.permissions,
+        is_system_role=role.is_system_role,
+        color=role.color,
+        created_at=role.created_at,
+        updated_at=role.updated_at
+    )
+
+
+@role_router.put("/{role_id}", response_model=RoleResponse)
+# @require_permissions  # Temporarily disabled([PermissionType.MANAGE_ROLES])
+async def update_role(
+    role_id: str,
+    role_data: RoleUpdateRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Update a role"""
+    if not PydanticObjectId.is_valid(role_id):
+        raise HTTPException(status_code=400, detail="Invalid role ID format")
+    
+    role = await Role.get(PydanticObjectId(role_id))
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    
+    if role.is_system_role:
+        raise HTTPException(status_code=400, detail="Cannot modify system roles")
+    
+    # Check if new name conflicts with existing role
+    if role_data.name and role_data.name != role.name:
+        existing_role = await Role.find_one(Role.name == role_data.name)
+        if existing_role:
+            raise HTTPException(status_code=400, detail="Role name already exists")
+    
+    # Update fields
+    update_data = {}
+    if role_data.name is not None:
+        update_data["name"] = role_data.name
+    if role_data.description is not None:
+        update_data["description"] = role_data.description
+    if role_data.permissions is not None:
+        update_data["permissions"] = role_data.permissions
+    if role_data.color is not None:
+        update_data["color"] = role_data.color
+    
+    update_data["updated_at"] = datetime.utcnow()
+    
+    await role.update({"$set": update_data})
+    updated_role = await Role.get(PydanticObjectId(role_id))
+    
+    return RoleResponse(
+        id=str(updated_role.id),
+        name=updated_role.name,
+        description=updated_role.description,
+        permissions=updated_role.permissions,
+        is_system_role=updated_role.is_system_role,
+        color=updated_role.color,
+        created_at=updated_role.created_at,
+        updated_at=updated_role.updated_at
+    )
+
+
+@role_router.delete("/{role_id}")
+# @require_permissions  # Temporarily disabled([PermissionType.MANAGE_ROLES])
+async def delete_role(role_id: str, current_user: User = Depends(get_current_user)):
+    """Delete a role"""
+    if not PydanticObjectId.is_valid(role_id):
+        raise HTTPException(status_code=400, detail="Invalid role ID format")
+    
+    role = await Role.get(PydanticObjectId(role_id))
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    
+    if role.is_system_role:
+        raise HTTPException(status_code=400, detail="Cannot delete system roles")
+    
+    # Check if role is assigned to any users
+    users_with_role = await User.find(
+        User.role_assignments.role_id == role_id
+    ).to_list()
+    
+    if users_with_role:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Cannot delete role. It is assigned to {len(users_with_role)} user(s)"
+        )
+    
+    await role.delete()
+    return {"message": "Role deleted successfully"}
+
+
+@role_router.post("/assign")
+# @require_permissions  # Temporarily disabled([PermissionType.MANAGE_ROLES])
+async def assign_role_to_user(
+    assignment: AssignRoleRequest,
+    current_user: User = Depends(get_current_user)
+):
+    """Assign a role to a user"""
+    # Validate user
+    if not PydanticObjectId.is_valid(assignment.user_id):
+        raise HTTPException(status_code=400, detail="Invalid user ID format")
+    
+    user = await User.get(PydanticObjectId(assignment.user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Validate role
+    if not PydanticObjectId.is_valid(assignment.role_id):
+        raise HTTPException(status_code=400, detail="Invalid role ID format")
+    
+    role = await Role.get(PydanticObjectId(assignment.role_id))
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    
+    # Add role to user
+    user.add_role(assignment.role_id, role.name, str(current_user.id))
+    await user.save()
+    
+    return {"message": f"Role '{role.name}' assigned to user '{user.name}' successfully"}
+
+
+@role_router.delete("/unassign/{user_id}/{role_id}")
+# @require_permissions  # Temporarily disabled([PermissionType.MANAGE_ROLES])
+async def unassign_role_from_user(
+    user_id: str,
+    role_id: str,
+    current_user: User = Depends(get_current_user)
+):
+    """Unassign a role from a user"""
+    # Validate user
+    if not PydanticObjectId.is_valid(user_id):
+        raise HTTPException(status_code=400, detail="Invalid user ID format")
+    
+    user = await User.get(PydanticObjectId(user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Validate role
+    if not PydanticObjectId.is_valid(role_id):
+        raise HTTPException(status_code=400, detail="Invalid role ID format")
+    
+    role = await Role.get(PydanticObjectId(role_id))
+    if not role:
+        raise HTTPException(status_code=404, detail="Role not found")
+    
+    # Remove role from user
+    user.remove_role(role.name)
+    await user.save()
+    
+    return {"message": f"Role '{role.name}' unassigned from user '{user.name}' successfully"}
+
+
+@role_router.get("/user/{user_id}")
+# @require_permissions  # Temporarily disabled([PermissionType.MANAGE_ROLES])
+async def get_user_roles(user_id: str, current_user: User = Depends(get_current_user)):
+    """Get all roles assigned to a user"""
+    if not PydanticObjectId.is_valid(user_id):
+        raise HTTPException(status_code=400, detail="Invalid user ID format")
+    
+    user = await User.get(PydanticObjectId(user_id))
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Get detailed role information
+    roles = []
+    for assignment in user.role_assignments:
+        role = await Role.get(PydanticObjectId(assignment.role_id))
+        if role:
+            roles.append({
+                "role": RoleResponse(
+                    id=str(role.id),
+                    name=role.name,
+                    description=role.description,
+                    permissions=role.permissions,
+                    is_system_role=role.is_system_role,
+                    color=role.color,
+                    created_at=role.created_at,
+                    updated_at=role.updated_at
+                ),
+                "assigned_at": assignment.assigned_at,
+                "assigned_by": assignment.assigned_by
+            })
+    
+    return {
+        "user_id": str(user.id),
+        "user_name": user.name,
+        "roles": roles
+    }

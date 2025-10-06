@@ -12,11 +12,11 @@ from datetime import datetime
 class Contact(Document):
     """Contact model representing external contacts"""
     
-    organisation: str = Field(..., description="Organization name")
+    organisation: Optional[str] = Field(None, description="Organization name")
     name: str = Field(..., description="Contact person name")
     designation: Optional[str] = Field(None, description="Job title/designation")
     branch_department: Optional[str] = Field(None, alias="Branch__Deprtment")
-    email: Optional[EmailStr] = Field(None, description="Email address")
+    email: Optional[str] = Field(None, description="Email address")
     address: Optional[str] = Field(None, description="Physical address")
     phone: Optional[str] = Field(None, description="Phone number")
     mobile: Optional[str] = Field(None, description="Mobile number")

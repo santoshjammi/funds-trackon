@@ -2,14 +2,38 @@
 Fundraising Controller - Handles fundraising campaign endpoints
 """
 
+import os
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
 from pydantic import BaseModel
 from app.models.fundraising import Fundraising, FundraisingStatus, InvestorType
+from app.models.user import User
+from app.controllers.auth_controller import get_current_user
+from app.utils.config import get_settings
 from beanie import PydanticObjectId
 from datetime import datetime
+import aiofiles
 
 fundraising_router = APIRouter(tags=["fundraising"])
+settings = get_settings()
+
+# File upload configuration
+DOCUMENTS_DIR = "uploads/documents"
+ALLOWED_DOCUMENT_TYPES = [
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/vnd.ms-excel",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "text/plain",
+    "text/csv",
+    "image/jpeg",
+    "image/png",
+    "image/gif"
+]
+
+# Ensure upload directory exists
+os.makedirs(DOCUMENTS_DIR, exist_ok=True)
 
 # Response models
 class FundraisingResponse(BaseModel):
@@ -19,8 +43,10 @@ class FundraisingResponse(BaseModel):
     organisation: str
     reference: str
     tnifmc_request_inr_cr: Optional[float]
+    niveshya_request_inr_cr: Optional[float] = None
     investor_type: Optional[str]
     responsibility_tnifmc: str
+    responsibility_niveshya: Optional[str] = None
     feeler_teaser_letter_sent: Optional[bool]
     meetings_detailed_discussions_im_sent: Optional[bool]
     initial_appraisal_evaluation_process_started: Optional[bool]
@@ -61,8 +87,15 @@ class FundraisingUpdate(BaseModel):
 async def create_fundraising_campaign(campaign_data: FundraisingCreate):
     """Create a new fundraising campaign"""
     try:
+        payload = campaign_data.model_dump()
+        # Dual-write: set new fields if provided via legacy names
+        if settings.write_compat_tnifmc_fields:
+            if payload.get("tnifmc_request_inr_cr") is not None and payload.get("niveshya_request_inr_cr") is None:
+                payload["niveshya_request_inr_cr"] = payload["tnifmc_request_inr_cr"]
+            if payload.get("responsibility_tnifmc") and not payload.get("responsibility_niveshya"):
+                payload["responsibility_niveshya"] = payload["responsibility_tnifmc"]
         campaign = Fundraising(
-            **campaign_data.model_dump(),
+            **payload,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow()
         )
@@ -74,7 +107,6 @@ async def create_fundraising_campaign(campaign_data: FundraisingCreate):
 @fundraising_router.get("/", response_model=List[FundraisingResponse])
 async def get_all_campaigns(
     skip: int = Query(0, ge=0),
-    limit: int = Query(500, ge=1, le=1000),
     status: Optional[FundraisingStatus] = Query(None, description="Filter by status"),
     organisation: Optional[str] = Query(None, description="Filter by organisation")
 ):
@@ -86,20 +118,22 @@ async def get_all_campaigns(
         if organisation:
             query["organisation"] = {"$regex": organisation, "$options": "i"}
         
-        campaigns = await Fundraising.find(query).skip(skip).limit(limit).to_list()
+        campaigns = await Fundraising.find(query).skip(skip).to_list()
         
         # Convert to response format
         response = []
         for campaign in campaigns:
-            response.append(FundraisingResponse(
+            resp = FundraisingResponse(
                 id=str(campaign.id),
                 status_open_closed=campaign.status_open_closed,
                 date_of_first_meeting_call=campaign.date_of_first_meeting_call,
                 organisation=campaign.organisation,
                 reference=campaign.reference,
                 tnifmc_request_inr_cr=campaign.tnifmc_request_inr_cr,
+                niveshya_request_inr_cr=getattr(campaign, "niveshya_request_inr_cr", None),
                 investor_type=campaign.investor_type,
                 responsibility_tnifmc=campaign.responsibility_tnifmc,
+                responsibility_niveshya=getattr(campaign, "responsibility_niveshya", None),
                 feeler_teaser_letter_sent=campaign.feeler_teaser_letter_sent,
                 meetings_detailed_discussions_im_sent=campaign.meetings_detailed_discussions_im_sent,
                 initial_appraisal_evaluation_process_started=campaign.initial_appraisal_evaluation_process_started,
@@ -112,7 +146,8 @@ async def get_all_campaigns(
                 contact_id=str(campaign.contact_id) if campaign.contact_id else None,
                 created_at=campaign.created_at,
                 updated_at=campaign.updated_at
-            ))
+            )
+            response.append(resp)
         
         return response
     except Exception as e:
@@ -136,8 +171,10 @@ async def get_campaign(campaign_id: str):
             organisation=campaign.organisation,
             reference=campaign.reference,
             tnifmc_request_inr_cr=campaign.tnifmc_request_inr_cr,
+            niveshya_request_inr_cr=getattr(campaign, "niveshya_request_inr_cr", None),
             investor_type=campaign.investor_type,
             responsibility_tnifmc=campaign.responsibility_tnifmc,
+            responsibility_niveshya=getattr(campaign, "responsibility_niveshya", None),
             feeler_teaser_letter_sent=campaign.feeler_teaser_letter_sent,
             meetings_detailed_discussions_im_sent=campaign.meetings_detailed_discussions_im_sent,
             initial_appraisal_evaluation_process_started=campaign.initial_appraisal_evaluation_process_started,
@@ -166,6 +203,12 @@ async def update_campaign(campaign_id: str, update_data: FundraisingUpdate):
             raise HTTPException(status_code=404, detail="Campaign not found")
         
         update_dict = update_data.dict(exclude_unset=True)
+        # Dual-write: copy legacy fields to new names on update
+        if settings.write_compat_tnifmc_fields:
+            if update_dict.get("tnifmc_request_inr_cr") is not None and update_dict.get("niveshya_request_inr_cr") is None:
+                update_dict["niveshya_request_inr_cr"] = update_dict["tnifmc_request_inr_cr"]
+            if update_dict.get("responsibility_tnifmc") and not update_dict.get("responsibility_niveshya"):
+                update_dict["responsibility_niveshya"] = update_dict["responsibility_tnifmc"]
         if update_dict:
             for field, value in update_dict.items():
                 setattr(campaign, field, value)
@@ -210,6 +253,78 @@ async def delete_campaign(campaign_id: PydanticObjectId):
     
     await campaign.delete()
     return {"message": "Campaign deleted successfully"}
+
+@fundraising_router.post("/{campaign_id}/upload", response_model=dict)
+async def upload_campaign_document(
+    campaign_id: str,
+    file: UploadFile = File(...),
+    description: Optional[str] = None,
+    current_user: User = Depends(get_current_user)
+):
+    """Upload a document and append it to the campaign notes"""
+
+    # Validate campaign exists
+    if not PydanticObjectId.is_valid(campaign_id):
+        raise HTTPException(status_code=400, detail="Invalid campaign ID format")
+
+    campaign = await Fundraising.get(PydanticObjectId(campaign_id))
+    if not campaign:
+        raise HTTPException(status_code=404, detail="Campaign not found")
+
+    # Validate file type
+    content_type = file.content_type or ""
+    if content_type not in ALLOWED_DOCUMENT_TYPES:
+        # Allow files with common extensions even if content-type is not set
+        file_ext = os.path.splitext(file.filename or "")[1].lower()
+        allowed_exts = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv', '.jpg', '.jpeg', '.png', '.gif']
+        if file_ext not in allowed_exts:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unsupported file type. Allowed: PDF, Word, Excel, Text, CSV, Images"
+            )
+
+    # Generate unique filename
+    import uuid
+    file_extension = os.path.splitext(file.filename or "")[1]
+    unique_filename = f"{uuid.uuid4()}{file_extension}"
+    file_path = os.path.join(DOCUMENTS_DIR, unique_filename)
+
+    # Save file
+    try:
+        async with aiofiles.open(file_path, 'wb') as f:
+            content = await file.read()
+            await f.write(content)
+            file_size = len(content)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to save file: {str(e)}"
+        )
+
+    # Create document reference
+    doc_reference = f"[Document: {file.filename} - {description or 'Uploaded file'} - {file_size} bytes]"
+
+    # Append to campaign notes
+    current_notes = campaign.notes or ""
+    if current_notes:
+        updated_notes = f"{current_notes}\n\n{doc_reference}"
+    else:
+        updated_notes = doc_reference
+
+    # Update campaign
+    campaign.notes = updated_notes
+    campaign.updated_at = datetime.utcnow()
+    await campaign.save()
+
+    return {
+        "message": "Document uploaded and added to campaign notes",
+        "campaign_id": campaign_id,
+        "filename": unique_filename,
+        "original_filename": file.filename,
+        "file_size": file_size,
+        "description": description,
+        "notes_updated": True
+    }
 
 @fundraising_router.get("/status/{status}", response_model=List[dict])
 async def get_campaigns_by_status(status: FundraisingStatus):

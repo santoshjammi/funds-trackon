@@ -1,0 +1,60 @@
+version: '3.9'
+
+services:
+  mongo:
+    image: mongo:7
+    container_name: niveshya-mongo
+    restart: unless-stopped
+    profiles:
+      - embedded-mongo
+    ports:
+      - "${MONGO_PORT:-27019}:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - appnet
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: niveshya-backend
+    restart: unless-stopped
+    environment:
+      - MONGODB_URL=${MONGODB_URL:-mongodb://mongo:27017/funds_trackon}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - BACKEND_PORT=${BACKEND_PORT:-8000}
+      - FRONTEND_PORT=${FRONTEND_PORT:-3000}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+      - NODE_ENV=production
+      - DEBUG=False
+    volumes:
+      - uploads:/app/uploads
+    # No hard depends_on, to allow connecting to external/host MongoDB
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    networks:
+      - appnet
+
+  web:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: niveshya-frontend
+    restart: unless-stopped
+    environment:
+      - REACT_APP_BACKEND_URL=http://backend:8000
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - backend
+    networks:
+      - appnet
+
+volumes:
+  mongo_data:
+  uploads:
+
+networks:
+  appnet:
+    driver: bridge

@@ -8,27 +8,32 @@ from pydantic import BaseModel
 from app.models.opportunity import Opportunity, OpportunityStatus
 from beanie import PydanticObjectId
 
-opportunity_router = APIRouter(prefix="/opportunities", tags=["opportunities"])
+opportunity_router = APIRouter(tags=["opportunities"])
 
 # Request/Response models
 class OpportunityCreate(BaseModel):
-    name: str
+    title: str
     description: Optional[str] = None
-    investment_amount: float
-    expected_return: float
-    risk_level: str
-    sector: str
-    location: str
+    organisation: str
+    estimated_value: Optional[float] = None
+    probability: Optional[float] = None
+    status: OpportunityStatus = OpportunityStatus.OPEN
+    priority: str = "Medium"
+    contact_id: Optional[str] = None
+    assigned_to: Optional[str] = None
+    target_close_date: Optional[str] = None
 
 class OpportunityUpdate(BaseModel):
-    name: Optional[str] = None
+    title: Optional[str] = None
     description: Optional[str] = None
-    investment_amount: Optional[float] = None
-    expected_return: Optional[float] = None
-    risk_level: Optional[str] = None
-    sector: Optional[str] = None
-    location: Optional[str] = None
+    organisation: Optional[str] = None
+    estimated_value: Optional[float] = None
+    probability: Optional[float] = None
     status: Optional[OpportunityStatus] = None
+    priority: Optional[str] = None
+    contact_id: Optional[str] = None
+    assigned_to: Optional[str] = None
+    target_close_date: Optional[str] = None
 
 @opportunity_router.post("/", response_model=dict)
 async def create_opportunity(opportunity_data: OpportunityCreate):
@@ -39,12 +44,12 @@ async def create_opportunity(opportunity_data: OpportunityCreate):
 
 @opportunity_router.get("/", response_model=List[dict])
 async def get_all_opportunities(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(100, ge=1, le=1000)
+    skip: int = Query(0, ge=0)
 ):
     """Get all investment opportunities"""
-    opportunities = await Opportunity.find_all().skip(skip).limit(limit).to_list()
-    return [opportunity.dict() for opportunity in opportunities]
+    opportunities = await Opportunity.find_all().skip(skip).to_list()
+    # Convert to dict and ensure id is a string
+    return [{"id": str(opportunity.id), **opportunity.model_dump(exclude={"id"})} for opportunity in opportunities]
 
 @opportunity_router.get("/{opportunity_id}", response_model=dict)
 async def get_opportunity(opportunity_id: PydanticObjectId):
@@ -52,7 +57,7 @@ async def get_opportunity(opportunity_id: PydanticObjectId):
     opportunity = await Opportunity.get(opportunity_id)
     if not opportunity:
         raise HTTPException(status_code=404, detail="Opportunity not found")
-    return opportunity.dict()
+    return {"id": str(opportunity.id), **opportunity.model_dump(exclude={"id"})}
 
 @opportunity_router.put("/{opportunity_id}", response_model=dict)
 async def update_opportunity(opportunity_id: PydanticObjectId, update_data: OpportunityUpdate):
@@ -82,4 +87,4 @@ async def delete_opportunity(opportunity_id: PydanticObjectId):
 async def get_opportunities_by_sector(sector: str):
     """Get opportunities by sector"""
     opportunities = await Opportunity.find({"sector": sector}).to_list()
-    return [opportunity.dict() for opportunity in opportunities]
+    return [{"id": str(opportunity.id), **opportunity.model_dump(exclude={"id"})} for opportunity in opportunities]

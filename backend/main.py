@@ -16,6 +16,8 @@ from app.controllers.task_controller import task_router
 from app.controllers.tracker_controller import tracker_router
 from app.controllers.organization_controller import organization_router
 from app.controllers.meeting_controller import meeting_router
+from app.controllers.role_controller import role_router
+from app.controllers.analytics_controller import router as analytics_router
 from app.models.database import init_db, close_mongo_connection
 from app.utils.config import get_settings
 
@@ -31,7 +33,7 @@ async def lifespan(app: FastAPI):
     await close_mongo_connection()
 
 app = FastAPI(
-    title="TNIFMC Lead Management System",
+    title="Niveshya Lead Management System",
     description="Investment tracking and lead management system with SOLID principles and MongoDB",
     version="1.0.0",
     lifespan=lifespan
@@ -56,12 +58,14 @@ app.include_router(opportunity_router, prefix="/api/opportunities", tags=["oppor
 app.include_router(task_router, prefix="/api/tasks", tags=["tasks"])
 app.include_router(tracker_router, prefix="/api/tracker", tags=["tracker"])
 app.include_router(meeting_router, prefix="/api/meetings", tags=["meetings"])
+app.include_router(role_router, tags=["roles"])
+app.include_router(analytics_router, prefix="/api", tags=["analytics"])
 
 @app.get("/")
 async def root():
     """Health check endpoint"""
     return {
-        "message": "TNIFMC Lead Management System API", 
+        "message": "Niveshya Lead Management System API", 
         "status": "healthy",
         "database": "MongoDB",
         "version": "1.0.0"
@@ -80,10 +84,15 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
+    import os
+    
+    # Use port from environment or default to 8000
+    port = int(os.getenv("PORT", 8001))  # Default to 8001 to match frontend proxy
+    
     uvicorn.run(
         "main:app", 
         host="0.0.0.0", 
-        port=8000, 
+        port=port, 
         reload=True,
         log_level="info"
     )

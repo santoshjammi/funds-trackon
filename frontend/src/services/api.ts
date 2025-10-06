@@ -1,5 +1,14 @@
-// API configuration and base setup
-const API_BASE_URL = 'http://localhost:8000';
+import { 
+  Permission, 
+  Role, 
+  CreateRoleRequest, 
+  UpdateRoleRequest, 
+  UserRolesResponse 
+} from '../types/rbac';
+
+const API_BASE_URL =
+  (typeof process !== 'undefined' && process.env && (process.env.REACT_APP_API_BASE_URL as string))
+  || '';
 
 // Optional auth token reader: localStorage, sessionStorage, then cookie fallback
 export const AUTH_TOKEN_KEYS = ['access_token','token','jwt','jwt_token','auth','authToken','id_token'] as const;
@@ -88,17 +97,17 @@ export interface Contact {
   // Timestamps
   created_at?: string;
   updated_at?: string;
-}
-
-export interface Fundraising {
+}export interface Fundraising {
   id?: string;
   status_open_closed: string;
   date_of_first_meeting_call?: string;
   organisation: string;
   reference: string;
   tnifmc_request_inr_cr?: number;
+  niveshya_request_inr_cr?: number; // new field during migration
   investor_type?: string;
   responsibility_tnifmc: string;
+  responsibility_niveshya?: string; // new field during migration
   
   // Process tracking booleans
   feeler_teaser_letter_sent?: boolean;
@@ -127,7 +136,7 @@ export interface User {
   employment_type: string;
   name: string;
   designation: string;
-  email: string;
+  email?: string;
   phone?: string;
   notes?: string;
   
@@ -147,42 +156,69 @@ export interface Organization {
   id?: string;
   name: string;
   industry?: string;
-  organization_type?: string;
   description?: string;
   website?: string;
-  
+  email?: string;
+  phone?: string;
+
   // Location information
   address?: string;
   city?: string;
-  state?: string;
   country?: string;
-  postal_code?: string;
-  geography_region?: string;
-  
-  // Contact information
-  contact_person?: string;
-  contact_designation?: string;
-  phone?: string;
-  email?: string;
-  
+  region?: string;
+
   // Business information
-  annual_revenue?: number;
-  employee_count?: number;
+  size?: string;
   founded_year?: number;
-  
-  // Investment information
-  investment_stage?: string;
-  previous_funding?: number;
-  
+  revenue?: string;
+
   // Relationship information
-  relationship_status?: string;
-  last_contact_date?: string;
-  next_action?: string;
-  
-  notes?: string;
   status?: string;
-  
+  relationship_type?: string;
+  priority?: string;
+
+  // Additional information
+  notes?: string;
+  tags?: string[];
+
   // Timestamps
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Opportunity {
+  id?: string;
+  title: string;
+  description?: string;
+  organisation: string;
+  contact_id?: string;
+  estimated_value?: number;
+  probability?: number;
+  status: string;
+  priority: string;
+  assigned_to?: string;
+  target_close_date?: string;
+  actual_close_date?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Task {
+  id?: string;
+  title: string;
+  description?: string;
+  task_type: string;
+  status: string;
+  priority: string;
+  due_date?: string;
+  completed_date?: string;
+  assigned_to?: string;
+  assigned_by?: string;
+  contact_id?: string;
+  opportunity_id?: string;
+  fundraising_id?: string;
+  tags?: string[];
+  notes?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -216,6 +252,7 @@ export interface MeetingCreateRequest {
   agenda?: string;
   attendees?: MeetingAttendee[];
   tnifmc_representatives?: string[];
+  niveshya_representatives?: string[];
 }
 
 export interface MeetingListItem {
@@ -294,7 +331,9 @@ function parseFilenameFromContentDisposition(header: string | null, fallback: st
 
 // Generic API request function
 async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
+  // Join base and endpoint without duplicating slashes
+  const base = API_BASE_URL.replace(/\/+$/, '');
+  const url = `${base}${endpoint}`;
   const openaiKey = (typeof localStorage !== 'undefined') ? localStorage.getItem('openai_api_key') : null;
   
   const config: RequestInit = {
@@ -319,10 +358,23 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
     const response = await fetch(url, config);
     
     if (!response.ok) {
+      // Try to get error details from the response
+      let errorMessage = `HTTP error! status: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        if (errorData.detail) {
+          errorMessage = errorData.detail;
+        } else if (errorData.message) {
+          errorMessage = errorData.message;
+        }
+      } catch {
+        // If parsing JSON fails, keep the HTTP status message
+      }
+      
       if (response.status === 401 || response.status === 403) {
         throw new Error('Not authenticated or access denied (401/403). Please log in again.');
       }
-      throw new Error(`HTTP error! status: ${response.status}`);
+      throw new Error(errorMessage);
     }
     
     return await response.json();
@@ -334,7 +386,9 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
 
 // Contact API functions
 export const contactsApi = {
-  getAll: (): Promise<Contact[]> => apiRequest<Contact[]>('/api/contacts/'),
+  getAll: (): Promise<Contact[]> => apiRequest<Contact[]>('/api/contacts/').then(contacts => 
+    contacts.map((contact: any) => ({ ...contact, id: contact._id || contact.id }))
+  ),
   getById: (id: string): Promise<Contact> => apiRequest<Contact>(`/api/contacts/${id}`),
   create: (contact: Omit<Contact, 'id'>): Promise<{message: string, id: string}> => 
     apiRequest<{message: string, id: string}>('/api/contacts/', {
@@ -354,8 +408,17 @@ export const contactsApi = {
 
 // Fundraising API functions
 export const fundraisingApi = {
-  getAll: (): Promise<Fundraising[]> => apiRequest<Fundraising[]>('/api/fundraising/'),
-  getById: (id: string): Promise<Fundraising> => apiRequest<Fundraising>(`/api/fundraising/${id}`),
+  getAll: (): Promise<Fundraising[]> => apiRequest<Fundraising[]>('/api/fundraising/').then(items => items.map((c: any) => ({
+    ...c,
+    // prefer new fields if present
+    tnifmc_request_inr_cr: c.niveshya_request_inr_cr ?? c.tnifmc_request_inr_cr,
+    responsibility_tnifmc: c.responsibility_niveshya ?? c.responsibility_tnifmc,
+  }))),
+  getById: (id: string): Promise<Fundraising> => apiRequest<Fundraising>(`/api/fundraising/${id}`).then((c: any) => ({
+    ...c,
+    tnifmc_request_inr_cr: c.niveshya_request_inr_cr ?? c.tnifmc_request_inr_cr,
+    responsibility_tnifmc: c.responsibility_niveshya ?? c.responsibility_tnifmc,
+  })),
   create: (fundraising: Omit<Fundraising, 'id'>): Promise<{message: string, id: string}> =>
     apiRequest<{message: string, id: string}>('/api/fundraising/', {
       method: 'POST',
@@ -370,6 +433,40 @@ export const fundraisingApi = {
     apiRequest<{message: string}>(`/api/fundraising/${id}`, {
       method: 'DELETE',
     }),
+  uploadDocument: async (campaignId: string, file: File, description?: string): Promise<{
+    message: string;
+    campaign_id: string;
+    filename: string;
+    original_filename: string;
+    file_size: number;
+    description?: string;
+    notes_updated: boolean;
+  }> => {
+    const url = `${API_BASE_URL}/api/fundraising/${campaignId}/upload`;
+    const form = new FormData();
+    form.append('file', file);
+    if (description) form.append('description', description);
+
+    const headers: Record<string, string> = {};
+    const token = getAuthToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers, // do NOT set Content-Type for FormData
+      body: form,
+    });
+    if (!res.ok) {
+      try {
+        const err = await res.json();
+        throw new Error(err?.detail || `Upload failed: ${res.status}`);
+      } catch {
+        const text = await res.text();
+        throw new Error(text || `Upload failed: ${res.status}`);
+      }
+    }
+    return res.json();
+  },
 };
 
 // Organizations API functions
@@ -464,12 +561,69 @@ export const usersApi = {
     apiRequest<{user_id: string, has_password: boolean}>(`/api/users/${id}/has-password`),
 };
 
+// RBAC API functions
+export const rolesApi = {
+  // Get all permissions
+  getPermissions: (): Promise<Permission[]> =>
+    apiRequest<Permission[]>('/api/roles/permissions'),
+  
+  // Get all roles
+  getRoles: (): Promise<Role[]> =>
+    apiRequest<Role[]>('/api/roles'),
+  
+  // Get specific role
+  getRole: (roleId: string): Promise<Role> =>
+    apiRequest<Role>(`/api/roles/${roleId}`),
+  
+  // Create new role
+  createRole: (role: CreateRoleRequest): Promise<Role> =>
+    apiRequest<Role>('/api/roles', {
+      method: 'POST',
+      body: JSON.stringify(role),
+    }),
+  
+  // Update role
+  updateRole: (roleId: string, role: UpdateRoleRequest): Promise<Role> =>
+    apiRequest<Role>(`/api/roles/${roleId}`, {
+      method: 'PUT',
+      body: JSON.stringify(role),
+    }),
+  
+  // Delete role
+  deleteRole: (roleId: string): Promise<{message: string}> =>
+    apiRequest<{message: string}>(`/api/roles/${roleId}`, {
+      method: 'DELETE',
+    }),
+  
+  // Assign role to user
+  assignRole: (userId: string, roleId: string): Promise<{message: string}> =>
+    apiRequest<{message: string}>('/api/roles/assign', {
+      method: 'POST',
+      body: JSON.stringify({user_id: userId, role_id: roleId}),
+    }),
+  
+  // Unassign role from user
+  unassignRole: (userId: string, roleId: string): Promise<{message: string}> =>
+    apiRequest<{message: string}>(`/api/roles/unassign/${userId}/${roleId}`, {
+      method: 'DELETE',
+    }),
+  
+  // Get user roles
+  getUserRoles: (userId: string): Promise<UserRolesResponse> =>
+    apiRequest<UserRolesResponse>(`/api/roles/user/${userId}`),
+};
+
 // Meetings API functions
 export const meetingsApi = {
   create: (req: MeetingCreateRequest): Promise<MeetingCreateResponse> =>
     apiRequest<MeetingCreateResponse>('/api/meetings/', {
       method: 'POST',
-      body: JSON.stringify(req),
+      body: JSON.stringify({
+        ...req,
+        // prefer new field name; keep legacy for compatibility until backend flips
+        tnifmc_representatives: req.niveshya_representatives ?? req.tnifmc_representatives,
+        niveshya_representatives: req.niveshya_representatives ?? req.tnifmc_representatives,
+      }),
     }),
 
   listByFundraising: (fundraisingId: string): Promise<MeetingListItem[]> =>
@@ -571,7 +725,16 @@ export const meetingsApi = {
   update: (meetingId: string, body: Partial<MeetingDetails>): Promise<{message: string}> =>
     apiRequest<{message: string}>(`/api/meetings/${meetingId}`, {
       method: 'PUT',
-      body: JSON.stringify(body),
+      body: JSON.stringify({
+        ...body,
+        tnifmc_representatives: (body as any).niveshya_representatives ?? (body as any).tnifmc_representatives,
+        niveshya_representatives: (body as any).niveshya_representatives ?? (body as any).tnifmc_representatives,
+      }),
+    }),
+
+  delete: (meetingId: string): Promise<{message: string}> =>
+    apiRequest<{message: string}>(`/api/meetings/${meetingId}`, {
+      method: 'DELETE',
     }),
 
   // Downloads
@@ -624,6 +787,91 @@ export const meetingsApi = {
     const blob = await res.blob();
     return { blob, filename };
   },
+
+  // AI Conversations
+  getMeetingConversations: (meetingId: string): Promise<Array<{
+    id: string;
+    user_prompt: string;
+    ai_response: string;
+    asked_by: string;
+    asked_at: string;
+    model_used?: string;
+    tokens_used?: number;
+    context_data?: any;
+  }>> => apiRequest(`/api/meetings/conversations/meeting/${meetingId}`),
+
+  getCampaignConversations: (fundraisingId: string): Promise<Array<{
+    id: string;
+    user_prompt: string;
+    ai_response: string;
+    asked_by: string;
+    asked_at: string;
+    model_used?: string;
+    tokens_used?: number;
+    context_data?: any;
+  }>> => apiRequest(`/api/meetings/conversations/campaign/${fundraisingId}`),
+
+  getUserConversations: (limit?: number): Promise<Array<{
+    id: string;
+    conversation_type: string;
+    meeting_id?: string;
+    fundraising_id?: string;
+    user_prompt: string;
+    ai_response: string;
+    asked_at: string;
+    model_used?: string;
+    tokens_used?: number;
+  }>> => apiRequest(`/api/meetings/conversations/user${limit ? `?limit=${limit}` : ''}`),
+};
+
+export const opportunitiesApi = {
+  getAll: (): Promise<Opportunity[]> => 
+    apiRequest<Opportunity[]>('/api/opportunities'),
+  
+  getById: (id: string): Promise<Opportunity> => 
+    apiRequest<Opportunity>(`/api/opportunities/${id}`),
+  
+  create: (opportunity: Omit<Opportunity, 'id'>): Promise<{message: string; id: string}> => 
+    apiRequest<{message: string; id: string}>('/api/opportunities', {
+      method: 'POST',
+      body: JSON.stringify(opportunity),
+    }),
+  
+  update: (id: string, opportunity: Partial<Opportunity>): Promise<{message: string}> => 
+    apiRequest<{message: string}>(`/api/opportunities/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(opportunity),
+    }),
+  
+  delete: (id: string): Promise<{message: string}> => 
+    apiRequest<{message: string}>(`/api/opportunities/${id}`, {
+      method: 'DELETE',
+    }),
+};
+
+export const tasksApi = {
+  getAll: (): Promise<Task[]> => 
+    apiRequest<Task[]>('/api/tasks'),
+  
+  getById: (id: string): Promise<Task> => 
+    apiRequest<Task>(`/api/tasks/${id}`),
+  
+  create: (task: Omit<Task, 'id'>): Promise<{message: string; id: string}> => 
+    apiRequest<{message: string; id: string}>('/api/tasks', {
+      method: 'POST',
+      body: JSON.stringify(task),
+    }),
+  
+  update: (id: string, task: Partial<Task>): Promise<{message: string}> => 
+    apiRequest<{message: string}>(`/api/tasks/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(task),
+    }),
+  
+  delete: (id: string): Promise<{message: string}> => 
+    apiRequest<{message: string}>(`/api/tasks/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 // Health check function
