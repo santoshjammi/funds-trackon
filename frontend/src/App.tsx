@@ -9,6 +9,13 @@ import Dashboard from './components/Dashboard';
 import Reports from './components/Reports';
 import OpportunityList from './components/OpportunityList';
 import TaskList from './components/TaskList';
+import ContactList from './components/ContactList';
+import ContactForm from './components/ContactForm';
+import OrganizationForm from './components/OrganizationForm';
+import OrganizationSelect from './components/OrganizationSelect';
+import ContactView from './components/ContactView';
+import OpportunityForm from './components/OpportunityForm';
+import TaskForm from './components/TaskForm';
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, loading: authLoading, login, logout, hasAnyRole } = useAuth();
@@ -233,6 +240,26 @@ const AppContent: React.FC = () => {
             💰 Fundraising Campaigns
           </button>
           <button
+            onClick={() => setActiveView('opportunities')}
+            className={`py-4 px-6 font-medium transition-colors border-b-2 ${
+              activeView.startsWith('opportunity') 
+                ? 'border-orange-500 text-orange-600 bg-orange-50' 
+                : 'border-transparent text-gray-600 hover:text-orange-600 hover:border-orange-300'
+            }`}
+          >
+            🎯 Opportunities
+          </button>
+          <button
+            onClick={() => setActiveView('tasks')}
+            className={`py-4 px-6 font-medium transition-colors border-b-2 ${
+              activeView.startsWith('task') 
+                ? 'border-cyan-500 text-cyan-600 bg-cyan-50' 
+                : 'border-transparent text-gray-600 hover:text-cyan-600 hover:border-cyan-300'
+            }`}
+          >
+            ✅ Tasks
+          </button>
+          <button
             onClick={() => setActiveView('users')}
             className={`py-4 px-6 font-medium transition-colors border-b-2 ${
               activeView === 'users' 
@@ -381,6 +408,56 @@ const AppContent: React.FC = () => {
     }
   };
 
+  const loadContactsData = async () => {
+    try {
+      const contactData = await contactsApi.getAll();
+      setContacts(contactData);
+    } catch (err) {
+      setError('Failed to load contacts');
+      console.error('Error loading contacts:', err);
+    }
+  };
+
+  const loadOpportunitiesData = async () => {
+    try {
+      const opportunityData = await opportunitiesApi.getAll();
+      setOpportunities(opportunityData);
+    } catch (err) {
+      setError('Failed to load opportunities');
+      console.error('Error loading opportunities:', err);
+    }
+  };
+
+  const loadTasksData = async () => {
+    try {
+      const taskData = await tasksApi.getAll();
+      setTasks(taskData);
+    } catch (err) {
+      setError('Failed to load tasks');
+      console.error('Error loading tasks:', err);
+    }
+  };
+
+  const handleCreateContact = async () => {
+    if (!editFormData) return;
+
+    try {
+      setLoading(true);
+      const result = await contactsApi.create(editFormData);
+      
+      // Refresh contacts list and navigate to the new contact
+      await loadContactsData();
+      setIsEditMode(false);
+      setActiveView('contacts');
+      setError(null);
+    } catch (err) {
+      setError('Failed to create contact. Please try again.');
+      console.error('Error creating contact:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDeleteContact = async () => {
     if (!selectedContact || !selectedContact.id) return;
     
@@ -408,6 +485,88 @@ const AppContent: React.FC = () => {
       ...editFormData,
       [field]: value
     });
+  };
+
+  // Opportunity handlers
+  const handleSaveOpportunity = async () => {
+    if (!oppEditFormData || !oppEditFormData.id) return;
+
+    try {
+      setLoading(true);
+      await opportunitiesApi.update(oppEditFormData.id, oppEditFormData);
+
+      // Update the selected opportunity and opportunities list
+      setSelectedOpportunity(oppEditFormData);
+      setOpportunities(opportunities.map(o => o.id === oppEditFormData.id ? oppEditFormData : o));
+      setIsOppEditMode(false);
+      setError(null);
+    } catch (err) {
+      setError('Failed to update opportunity. Please try again.');
+      console.error('Error updating opportunity:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateOpportunity = async () => {
+    if (!oppEditFormData) return;
+
+    try {
+      setLoading(true);
+      const result = await opportunitiesApi.create(oppEditFormData);
+
+      // Refresh opportunities list and navigate to the new opportunity
+      await loadOpportunitiesData();
+      setIsOppEditMode(false);
+      setActiveView('opportunities');
+      setError(null);
+    } catch (err) {
+      setError('Failed to create opportunity. Please try again.');
+      console.error('Error creating opportunity:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Task handlers
+  const handleSaveTask = async () => {
+    if (!taskEditFormData || !taskEditFormData.id) return;
+
+    try {
+      setLoading(true);
+      await tasksApi.update(taskEditFormData.id, taskEditFormData);
+
+      // Update the selected task and tasks list
+      setSelectedTask(taskEditFormData);
+      setTasks(tasks.map(t => t.id === taskEditFormData.id ? taskEditFormData : t));
+      setIsTaskEditMode(false);
+      setError(null);
+    } catch (err) {
+      setError('Failed to update task. Please try again.');
+      console.error('Error updating task:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateTask = async () => {
+    if (!taskEditFormData) return;
+
+    try {
+      setLoading(true);
+      const result = await tasksApi.create(taskEditFormData);
+
+      // Refresh tasks list and navigate to the new task
+      await loadTasksData();
+      setIsTaskEditMode(false);
+      setActiveView('tasks');
+      setError(null);
+    } catch (err) {
+      setError('Failed to create task. Please try again.');
+      console.error('Error creating task:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // User detail handlers
@@ -531,22 +690,27 @@ const AppContent: React.FC = () => {
   };
 
   const renderContactDetail = () => {
-    if (!selectedContact) return null;
-    
+    if (!selectedContact && !isEditMode) return null;
+
     return (
       <div>
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Contact Details</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            {isEditMode ? (selectedContact ? 'Edit Contact' : 'Create New Contact') : 'Contact Details'}
+          </h2>
           <div className="flex space-x-3">
             {!isEditMode ? (
               <>
-                <button 
-                  onClick={handleEditContact}
+                <button
+                  onClick={() => {
+                    setIsEditMode(true);
+                    setEditFormData(selectedContact);
+                  }}
                   className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
                 >
                   ✏️ Edit
                 </button>
-                <button 
+                <button
                   onClick={() => setShowDeleteConfirm(true)}
                   className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 transition-colors"
                 >
@@ -555,22 +719,27 @@ const AppContent: React.FC = () => {
               </>
             ) : (
               <>
-                <button 
-                  onClick={handleSaveContact}
+                <button
+                  onClick={selectedContact ? handleSaveContact : handleCreateContact}
                   disabled={loading}
                   className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
                 >
                   {loading ? 'Saving...' : '💾 Save'}
                 </button>
-                <button 
-                  onClick={handleCancelEdit}
+                <button
+                  onClick={() => {
+                    setIsEditMode(false);
+                    if (!selectedContact) {
+                      setActiveView('contacts');
+                    }
+                  }}
                   className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
                 >
                   ❌ Cancel
                 </button>
               </>
             )}
-            <button 
+            <button
               onClick={handleBackToContacts}
               className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
             >
@@ -578,115 +747,125 @@ const AppContent: React.FC = () => {
             </button>
           </div>
         </div>
-        
-        <div className="bg-white rounded-lg shadow-lg">
-          {/* Header with contact name and organization */}
-          <div className="bg-gradient-to-r from-green-500 to-blue-600 text-white px-6 py-8 rounded-t-lg">
-            <div className="flex items-center">
-              <div className="flex-shrink-0 h-16 w-16">
-                <div className="h-16 w-16 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
-                  <span className="text-2xl font-bold">
-                    {selectedContact.name?.charAt(0) || 'C'}
-                  </span>
+
+        {isEditMode ? (
+          <ContactForm
+            contact={editFormData}
+            onChange={setEditFormData}
+            organizations={organizations}
+          />
+        ) : (
+          selectedContact && (
+            <>
+              <ContactView
+                contact={selectedContact}
+                onEdit={() => setIsEditMode(true)}
+                onDelete={() => setShowDeleteConfirm(true)}
+              />
+
+              {/* Tasks section for this contact */}
+              <div className="mt-8">
+                <div className="px-6 py-4 bg-gray-50 border border-gray-200 rounded-t-lg flex justify-between items-center">
+                  <h3 className="text-lg font-medium text-gray-900">Tasks for {selectedContact.name}</h3>
+                  <button
+                    onClick={() => {
+                      setTaskEditFormData({
+                        title: '',
+                        description: '',
+                        task_type: 'other',
+                        status: 'pending',
+                        priority: 'medium',
+                        due_date: '',
+                        completed_date: '',
+                        assigned_to: '',
+                        assigned_by: '',
+                        contact_id: selectedContact.id,
+                        opportunity_id: '',
+                        fundraising_id: '',
+                        tags: [],
+                        notes: '',
+                        created_at: '',
+                        updated_at: ''
+                      });
+                      setIsTaskEditMode(true);
+                      setActiveView('task-detail');
+                    }}
+                    className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center"
+                  >
+                    <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Create Task
+                  </button>
+                </div>
+                <div className="p-4 bg-white border border-gray-200 border-t-0 rounded-b-lg">
+                  {tasks.filter(task => task.contact_id === selectedContact.id).length > 0 ? (
+                    <div className="space-y-3">
+                      {tasks.filter(task => task.contact_id === selectedContact.id).map(task => (
+                        <div key={task.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-md hover:bg-gray-50">
+                          <div className="flex-1">
+                            <h4 className="font-medium text-gray-900">{task.title}</h4>
+                            <p className="text-sm text-gray-600">{task.description}</p>
+                            <div className="flex items-center space-x-4 mt-1">
+                              <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                                task.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                                task.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {task.status}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                Priority: {task.priority}
+                              </span>
+                              {task.due_date && (
+                                <span className="text-xs text-gray-500">
+                                  Due: {new Date(task.due_date).toLocaleDateString()}
+                                </span>
+                              )}
+                              {(task.assigned_to || task.contact_id) && (
+                                <span className="text-xs text-gray-500">
+                                  Assigned to: {
+                                    task.assigned_to && users.find(u => u.id === task.assigned_to)
+                                      ? `👤 ${users.find(u => u.id === task.assigned_to)?.name}`
+                                      : task.contact_id && contacts.find(c => c.id === task.contact_id)
+                                      ? `📞 ${contacts.find(c => c.id === task.contact_id)?.name}`
+                                      : 'Unknown'
+                                  }
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => {
+                              setSelectedTask(task);
+                              setIsTaskEditMode(true);
+                              setTaskEditFormData(task);
+                              setActiveView('task-detail');
+                            }}
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                          >
+                            View/Edit
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                      <h3 className="mt-2 text-sm font-medium text-gray-900">No tasks</h3>
+                      <p className="mt-1 text-sm text-gray-500">Get started by creating a new task for this contact.</p>
+                    </div>
+                  )}
                 </div>
               </div>
-              <div className="ml-6">
-                <h1 className="text-3xl font-bold">{selectedContact.name}</h1>
-                <p className="text-xl opacity-90">{selectedContact.organisation}</p>
-                {selectedContact.designation && (
-                  <p className="text-lg opacity-75">{selectedContact.designation}</p>
-                )}
-              </div>
-            </div>
-          </div>
-          
-          {/* Contact Information Grid */}
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              
-              {/* Contact Information Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Contact Information</h3>
-                
-                {/* Name (always visible) */}
-                {renderEditableField('Name', 'name', 'text', '👤')}
-                
-                {/* Email */}
-                {renderEditableField('Email', 'email', 'email', '�')}
-                
-                {/* Phone */}
-                {renderEditableField('Phone', 'phone', 'tel', '📞')}
-                
-                {/* Mobile */}
-                {renderEditableField('Mobile', 'mobile', 'tel', '📱')}
-                
-                {/* Address */}
-                {renderEditableField('Address', 'address', 'text', '🏢')}
-              </div>
-              
-              {/* Organization & Location Section */}
-              <div className="space-y-4">
-                <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Organization Details</h3>
-                
-                {/* Organization */}
-                {renderEditableField('Organization', 'organisation', 'text', '🏢')}
-                
-                {/* Designation */}
-                {renderEditableField('Designation', 'designation', 'text', '💼')}
-                
-                {/* Department */}
-                {renderEditableField('Department', 'branch_department', 'text', '🏛️')}
-                
-                {/* Region */}
-                {renderEditableField('Region', 'geography_region', 'text', '🌍')}
-                
-                {/* Country/Location */}
-                {renderEditableField('Country/Location', 'country_location', 'text', '📍')}
-                
-                {/* Sub Location */}
-                {renderEditableField('Sub Location', 'sub_location', 'text', '📌')}
-                
-                {/* Status */}
-                {renderEditableField('Status', 'status', 'text', '✅')}
-              </div>
-            </div>
-            
-            {/* Notes Section */}
-            <div className="mt-8">
-              <h3 className="text-lg font-semibold text-gray-900 border-b pb-2 mb-4">Notes & Comments</h3>
-              <div className="bg-gray-50 rounded-lg p-4">
-                {isEditMode ? (
-                  <textarea
-                    value={editFormData?.notes_comments || ''}
-                    onChange={(e) => handleFormChange('notes_comments', e.target.value)}
-                    rows={4}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter notes and comments..."
-                  />
-                ) : (
-                  <p className="text-gray-800 whitespace-pre-wrap">
-                    {selectedContact.notes_comments || 'No notes available'}
-                  </p>
-                )}
-              </div>
-            </div>
-            
-            {/* Timestamps */}
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <div className="flex justify-between text-sm text-gray-500">
-                <span>
-                  Created: {selectedContact.created_at ? new Date(selectedContact.created_at).toLocaleString() : 'N/A'}
-                </span>
-                <span>
-                  Updated: {selectedContact.updated_at ? new Date(selectedContact.updated_at).toLocaleString() : 'N/A'}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-        
+            </>
+          )
+        )}
+
         {/* Delete Confirmation Modal */}
-        {showDeleteConfirm && (
+        {showDeleteConfirm && selectedContact && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
               <div className="mt-3 text-center">
@@ -720,6 +899,43 @@ const AppContent: React.FC = () => {
   };
 
   const renderOrganizationDetail = () => {
+    // Show form for creating new organization
+    if (!selectedOrganization && isOrgEditMode) {
+      return (
+        <div className="max-w-6xl mx-auto">
+          <OrganizationForm
+            formData={orgEditFormData || {
+              name: '',
+              industry: '',
+              description: '',
+              website: '',
+              email: '',
+              phone: '',
+              address: '',
+              city: '',
+              country: '',
+              region: '',
+              size: '',
+              founded_year: 0,
+              revenue: '',
+              status: 'Active',
+              relationship_type: '',
+              priority: 'Medium',
+              notes: '',
+              tags: []
+            }}
+            onChange={handleOrgFormChange}
+            onSave={handleSaveOrganization}
+            onCancel={() => {
+              setIsOrgEditMode(false);
+              setActiveView('organizations');
+            }}
+            isEdit={false}
+          />
+        </div>
+      );
+    }
+
     if (!selectedOrganization) return null;
 
     return (
@@ -779,7 +995,6 @@ const AppContent: React.FC = () => {
               
               {renderOrgEditableField('Organization Name', 'name', 'text', '🏢')}
               {renderOrgEditableField('Industry', 'industry', 'text', '🏭')}
-              {renderOrgEditableField('Type', 'organization_type', 'text', '📊')}
               {renderOrgEditableField('Description', 'description', 'text', '📝')}
               {renderOrgEditableField('Website', 'website', 'url', '🌐')}
             </div>
@@ -788,8 +1003,6 @@ const AppContent: React.FC = () => {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Contact Information</h3>
               
-              {renderOrgEditableField('Contact Person', 'contact_person', 'text', '👤')}
-              {renderOrgEditableField('Designation', 'contact_designation', 'text', '🎯')}
               {renderOrgEditableField('Email', 'email', 'email', '📧')}
               {renderOrgEditableField('Phone', 'phone', 'tel', '📞')}
             </div>
@@ -800,30 +1013,26 @@ const AppContent: React.FC = () => {
               
               {renderOrgEditableField('Address', 'address', 'text', '📍')}
               {renderOrgEditableField('City', 'city', 'text', '🏙️')}
-              {renderOrgEditableField('State', 'state', 'text', '🗺️')}
               {renderOrgEditableField('Country', 'country', 'text', '🌍')}
-              {renderOrgEditableField('Postal Code', 'postal_code', 'text', '📮')}
-              {renderOrgEditableField('Region', 'geography_region', 'text', '🌏')}
+              {renderOrgEditableField('Region', 'region', 'text', '🌏')}
             </div>
 
             {/* Business Information */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Business Information</h3>
               
-              {renderOrgEditableField('Annual Revenue (Cr)', 'annual_revenue', 'number', '💰')}
-              {renderOrgEditableField('Employee Count', 'employee_count', 'number', '👥')}
+              {renderOrgEditableField('Organization Size', 'size', 'text', '👥')}
               {renderOrgEditableField('Founded Year', 'founded_year', 'number', '📅')}
-              {renderOrgEditableField('Investment Stage', 'investment_stage', 'text', '📈')}
-              {renderOrgEditableField('Previous Funding (Cr)', 'previous_funding', 'number', '💵')}
+              {renderOrgEditableField('Annual Revenue', 'revenue', 'text', '�')}
             </div>
 
             {/* Relationship Information */}
             <div className="space-y-4 md:col-span-2">
               <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Relationship Information</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {renderOrgEditableField('Relationship Status', 'relationship_status', 'text', '🤝')}
-                {renderOrgEditableField('Last Contact Date', 'last_contact_date', 'text', '📅')}
-                {renderOrgEditableField('Next Action', 'next_action', 'text', '⚡')}
+                {renderOrgEditableField('Status', 'status', 'text', '🤝')}
+                {renderOrgEditableField('Relationship Type', 'relationship_type', 'text', '🤝')}
+                {renderOrgEditableField('Priority', 'priority', 'text', '⚡')}
               </div>
             </div>
 
@@ -913,19 +1122,21 @@ const AppContent: React.FC = () => {
     return organizations.filter(org =>
       org.name?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
       org.industry?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
-      org.organization_type?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
       org.description?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
-      org.contact_person?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
-      org.contact_designation?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
+      org.website?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
       org.email?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
       org.phone?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
+      org.address?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
       org.city?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
       org.country?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
-      org.geography_region?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
-      org.investment_stage?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
-      org.relationship_status?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
+      org.region?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
+      org.size?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
+      org.revenue?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
+      org.status?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
+      org.relationship_type?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
+      org.priority?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
       org.notes?.toLowerCase().includes(orgSearchTerm.toLowerCase()) ||
-      org.status?.toLowerCase().includes(orgSearchTerm.toLowerCase())
+      (org.tags && org.tags.some(tag => tag.toLowerCase().includes(orgSearchTerm.toLowerCase())))
     );
   };
 
@@ -1172,20 +1383,35 @@ const AppContent: React.FC = () => {
   };
 
   const handleSaveOrganization = async () => {
-    if (!orgEditFormData || !orgEditFormData.id) return;
+    if (!orgEditFormData) return;
     
     try {
       setLoading(true);
-      await organizationsApi.update(orgEditFormData.id, orgEditFormData);
+      let savedOrganization: Organization;
       
-      // Update the selected organization and organizations list
-      setSelectedOrganization(orgEditFormData);
-      setOrganizations(organizations.map(o => o.id === orgEditFormData.id ? orgEditFormData : o));
+      if (orgEditFormData.id) {
+        // Update existing organization
+        await organizationsApi.update(orgEditFormData.id, orgEditFormData);
+        // Use the form data as the updated organization since API doesn't return it
+        savedOrganization = orgEditFormData as Organization;
+        // Update the selected organization and organizations list
+        setSelectedOrganization(savedOrganization);
+        setOrganizations(organizations.map(o => o.id === savedOrganization.id ? savedOrganization : o));
+      } else {
+        // Create new organization
+        const createResponse = await organizationsApi.create(orgEditFormData);
+        // Fetch the created organization using the returned ID
+        savedOrganization = await organizationsApi.getById(createResponse.id);
+        // Add to organizations list and set as selected
+        setOrganizations([...organizations, savedOrganization]);
+        setSelectedOrganization(savedOrganization);
+      }
+      
       setIsOrgEditMode(false);
       setError(null);
     } catch (err) {
-      setError('Failed to update organization. Please try again.');
-      console.error('Error updating organization:', err);
+      setError(`Failed to ${orgEditFormData.id ? 'update' : 'create'} organization. Please try again.`);
+      console.error(`Error ${orgEditFormData.id ? 'updating' : 'creating'} organization:`, err);
     } finally {
       setLoading(false);
     }
@@ -1211,7 +1437,7 @@ const AppContent: React.FC = () => {
     }
   };
 
-  const handleOrgFormChange = (field: keyof Organization, value: string | number) => {
+  const handleOrgFormChange = (field: keyof Organization, value: string | number | string[]) => {
     if (!orgEditFormData) return;
     
     setOrgEditFormData({
@@ -1260,242 +1486,37 @@ const AppContent: React.FC = () => {
   };
 
   const renderContacts = () => {
-    const processedContacts = getProcessedContacts();
-    
     return (
-      <div>
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">
-            Contacts ({processedContacts.length}{contacts.length !== processedContacts.length ? ` of ${contacts.length}` : ''})
-          </h2>
-        </div>
-        
-        {/* Search Bar */}
-        <div className="mb-4">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input
-              type="text"
-              placeholder="Search contacts by name, organization, email, position, department, region, notes..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-green-500 focus:border-green-500"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
-                aria-label="Clear search"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-          </div>
-        </div>
-      
-      {loading ? (
-        <div className="text-center py-8">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <p className="mt-2 text-gray-600">Loading contacts...</p>
-        </div>
-        ) : contacts.length === 0 ? (
-          <div className="bg-gray-100 rounded-lg p-8 text-center">
-            <p className="text-gray-600">No contacts found. Add some sample data to see it here!</p>
-          </div>
-        ) : processedContacts.length === 0 ? (
-          <div className="bg-gray-100 rounded-lg p-8 text-center">
-            <p className="text-gray-600">No contacts match your search criteria.</p>
-          </div>
-        ) : (
-        <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button
-                      onClick={() => handleSort('name')}
-                      className="flex items-center space-x-1 hover:text-gray-700 focus:outline-none"
-                    >
-                      <span>Name</span>
-                      {sortField === 'name' && (
-                        <span className="text-gray-400">
-                          {sortDirection === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button
-                      onClick={() => handleSort('organisation')}
-                      className="flex items-center space-x-1 hover:text-gray-700 focus:outline-none"
-                    >
-                      <span>Organization</span>
-                      {sortField === 'organisation' && (
-                        <span className="text-gray-400">
-                          {sortDirection === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button
-                      onClick={() => handleSort('designation')}
-                      className="flex items-center space-x-1 hover:text-gray-700 focus:outline-none"
-                    >
-                      <span>Designation</span>
-                      {sortField === 'designation' && (
-                        <span className="text-gray-400">
-                          {sortDirection === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Contact Info
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button
-                      onClick={() => handleSort('branch_department')}
-                      className="flex items-center space-x-1 hover:text-gray-700 focus:outline-none"
-                    >
-                      <span>Department</span>
-                      {sortField === 'branch_department' && (
-                        <span className="text-gray-400">
-                          {sortDirection === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button
-                      onClick={() => handleSort('geography_region')}
-                      className="flex items-center space-x-1 hover:text-gray-700 focus:outline-none"
-                    >
-                      <span>Region</span>
-                      {sortField === 'geography_region' && (
-                        <span className="text-gray-400">
-                          {sortDirection === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Notes
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button
-                      onClick={() => handleSort('status')}
-                      className="flex items-center space-x-1 hover:text-gray-700 focus:outline-none"
-                    >
-                      <span>Status</span>
-                      {sortField === 'status' && (
-                        <span className="text-gray-400">
-                          {sortDirection === 'asc' ? '↑' : '↓'}
-                        </span>
-                      )}
-                    </button>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {processedContacts.map((contact, index) => (
-                  <tr key={contact.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => handleContactClick(contact)}
-                        className="text-sm font-medium text-blue-600 hover:text-blue-800 hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded"
-                      >
-                        {contact.name}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{contact.organisation}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{contact.designation || 'N/A'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {contact.email && (
-                          <div className="flex items-center">
-                            <span className="inline-block w-2 h-2 bg-green-400 rounded-full mr-2"></span>
-                            <a href={`mailto:${contact.email}`} className="text-blue-600 hover:text-blue-800">
-                              {contact.email}
-                            </a>
-                          </div>
-                        )}
-                        {contact.phone && (
-                          <div className="flex items-center mt-1">
-                            <span className="inline-block w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
-                            <a href={`tel:${contact.phone}`} className="text-gray-600 hover:text-gray-800">
-                              {contact.phone}
-                            </a>
-                          </div>
-                        )}
-                        {contact.mobile && (
-                          <div className="flex items-center mt-1">
-                            <span className="inline-block w-2 h-2 bg-purple-400 rounded-full mr-2"></span>
-                            <a href={`tel:${contact.mobile}`} className="text-gray-600 hover:text-gray-800">
-                              📱 {contact.mobile}
-                            </a>
-                          </div>
-                        )}
-                        {!contact.email && !contact.phone && !contact.mobile && (
-                          <span className="text-gray-400">No contact info</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{contact.branch_department || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-500">{contact.geography_region || '-'}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-500 max-w-xs truncate" title={contact.notes_comments || ''}>
-                        {contact.notes_comments || '-'}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        contact.status === 'Active' 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {contact.status || 'Active'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          
-          {/* Summary footer */}
-          <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
-            <div className="flex justify-between items-center text-sm text-gray-500">
-              <span>Showing {processedContacts.length} contacts{contacts.length !== processedContacts.length ? ` (filtered from ${contacts.length})` : ''}</span>
-              <div className="flex space-x-4">
-                <span>📧 Email: {processedContacts.filter(c => c.email).length}</span>
-                <span>📞 Phone: {processedContacts.filter(c => c.phone).length}</span>
-                <span>📱 Mobile: {processedContacts.filter(c => c.mobile).length}</span>
-                <span>🏢 Dept: {processedContacts.filter(c => c.branch_department).length}</span>
-                <span>📝 Notes: {processedContacts.filter(c => c.notes_comments).length}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+      <ContactList
+        onSelectContact={(contact) => {
+          setSelectedContact(contact);
+          setEditFormData(contact);
+          setIsEditMode(false);
+          setActiveView('contact-detail');
+        }}
+        onCreateNew={() => {
+          setSelectedContact(null);
+          setEditFormData({
+            organisation: '',
+            name: '',
+            designation: '',
+            branch_department: '',
+            email: '',
+            address: '',
+            phone: '',
+            mobile: '',
+            geography_region: '',
+            country_location: '',
+            sub_location: '',
+            notes_comments: '',
+            status: 'active'
+          });
+          setIsEditMode(true);
+          setActiveView('contact-detail');
+        }}
+      />
+    );
+  };
 
   const renderUserDetail = () => {
     if (!selectedUser) return null;
@@ -1858,6 +1879,36 @@ const AppContent: React.FC = () => {
       <div>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-2xl font-bold text-gray-900">Organizations ({organizations.length})</h2>
+          <button
+            onClick={() => {
+              setSelectedOrganization(null);
+              setOrgEditFormData({
+                name: '',
+                industry: '',
+                description: '',
+                website: '',
+                email: '',
+                phone: '',
+                address: '',
+                city: '',
+                country: '',
+                region: '',
+                size: '',
+                founded_year: 0,
+                revenue: '',
+                status: 'Active',
+                relationship_type: '',
+                priority: 'Medium',
+                notes: '',
+                tags: []
+              });
+              setIsOrgEditMode(true);
+              setActiveView('organization-detail');
+            }}
+            className="bg-purple-600 text-white px-4 py-2 rounded-md hover:bg-purple-700 transition-colors"
+          >
+            + Add Organization
+          </button>
         </div>
 
         {/* Search Bar */}
@@ -1896,14 +1947,14 @@ const AppContent: React.FC = () => {
                     <th onClick={() => handleOrgSort('industry')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
                       Industry {orgSortField === 'industry' && (orgSortDirection === 'asc' ? '↑' : '↓')}
                     </th>
-                    <th onClick={() => handleOrgSort('contact_person')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                      Contact Person {orgSortField === 'contact_person' && (orgSortDirection === 'asc' ? '↑' : '↓')}
+                    <th onClick={() => handleOrgSort('email')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                      Email {orgSortField === 'email' && (orgSortDirection === 'asc' ? '↑' : '↓')}
                     </th>
                     <th onClick={() => handleOrgSort('city')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
                       Location {orgSortField === 'city' && (orgSortDirection === 'asc' ? '↑' : '↓')}
                     </th>
-                    <th onClick={() => handleOrgSort('relationship_status')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
-                      Status {orgSortField === 'relationship_status' && (orgSortDirection === 'asc' ? '↑' : '↓')}
+                    <th onClick={() => handleOrgSort('status')} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100">
+                      Status {orgSortField === 'status' && (orgSortDirection === 'asc' ? '↑' : '↓')}
                     </th>
                   </tr>
                 </thead>
@@ -1916,15 +1967,14 @@ const AppContent: React.FC = () => {
                           className="text-left hover:text-purple-600 transition-colors"
                         >
                           <div className="text-sm font-medium text-purple-600 hover:text-purple-900 cursor-pointer">{org.name}</div>
-                          <div className="text-sm text-gray-500">{org.organization_type || 'N/A'}</div>
+                          <div className="text-sm text-gray-500">{org.industry || 'N/A'}</div>
                         </button>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{org.industry || 'N/A'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{org.contact_person || 'N/A'}</div>
-                        <div className="text-sm text-gray-500">{org.contact_designation || ''}</div>
+                        <div className="text-sm text-gray-900">{org.email || 'N/A'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{org.city || 'N/A'}</div>
@@ -1932,12 +1982,14 @@ const AppContent: React.FC = () => {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          org.relationship_status === 'active' ? 'bg-green-100 text-green-800' :
-                          org.relationship_status === 'prospect' ? 'bg-blue-100 text-blue-800' :
-                          org.relationship_status === 'inactive' ? 'bg-gray-100 text-gray-800' :
+                          org.status === 'Active' ? 'bg-green-100 text-green-800' :
+                          org.status === 'Prospect' ? 'bg-blue-100 text-blue-800' :
+                          org.status === 'Inactive' ? 'bg-gray-100 text-gray-800' :
+                          org.status === 'Partner' ? 'bg-purple-100 text-purple-800' :
+                          org.status === 'Competitor' ? 'bg-red-100 text-red-800' :
                           'bg-gray-100 text-gray-600'
                         }`}>
-                          {org.relationship_status || 'N/A'}
+                          {org.status || 'N/A'}
                         </span>
                       </td>
                     </tr>
@@ -2236,7 +2288,7 @@ const AppContent: React.FC = () => {
       }
     };
 
-    const renderField = (label: string, value: any, field: keyof Fundraising, type: 'text' | 'textarea' | 'select' | 'number' | 'checkbox' = 'text', options?: string[]) => (
+    const renderField = (label: string, value: any, field: keyof Fundraising, type: 'text' | 'textarea' | 'select' | 'number' | 'checkbox' | 'organization-select' = 'text', options?: string[], organizations?: Organization[]) => (
       <div className="border-b border-gray-200 py-3">
         <div className="flex justify-between items-start">
           <label className="block text-sm font-medium text-gray-700 w-1/3 pt-2">
@@ -2291,6 +2343,17 @@ const AppContent: React.FC = () => {
                 step="0.01"
                 placeholder={`Enter ${label.toLowerCase()}`}
                 className="ml-2 w-2/3 px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            ) : type === 'organization-select' && organizations ? (
+              <OrganizationSelect
+                organizations={organizations}
+                value={String(fundraisingEditFormData[field] || '')}
+                onChange={(value) => setFundraisingEditFormData({
+                  ...fundraisingEditFormData,
+                  [field]: value
+                })}
+                placeholder={`Select or enter ${label.toLowerCase()}`}
+                className="ml-2 w-2/3"
               />
             ) : (
               <input
@@ -2382,7 +2445,7 @@ const AppContent: React.FC = () => {
           </div>
           
           <div className="px-6 py-4 space-y-1">
-            {renderField('Organization', selectedFundraising.organisation, 'organisation')}
+            {renderField('Organization', selectedFundraising.organisation, 'organisation', 'organization-select', undefined, organizations)}
             {renderField('Status', selectedFundraising.status_open_closed, 'status_open_closed', 'select', ['Open', 'Closed', 'Invested'])}
             {renderField('Reference', selectedFundraising.reference, 'reference')}
             {renderField('Niveshya Request (₹ Cr)', selectedFundraising.tnifmc_request_inr_cr, 'tnifmc_request_inr_cr', 'number')}
@@ -2474,6 +2537,104 @@ const AppContent: React.FC = () => {
           </div>
         </div>
 
+        {/* Tasks section for this fundraising campaign */}
+        <div className="mt-8">
+          <div className="px-6 py-4 bg-gray-50 border border-gray-200 rounded-t-lg flex justify-between items-center">
+            <h3 className="text-lg font-medium text-gray-900">Tasks for {selectedFundraising.organisation}</h3>
+            <button
+              onClick={() => {
+                setTaskEditFormData({
+                  title: '',
+                  description: '',
+                  task_type: 'other',
+                  status: 'pending',
+                  priority: 'medium',
+                  due_date: '',
+                  completed_date: '',
+                  assigned_to: '',
+                  assigned_by: '',
+                  contact_id: '',
+                  opportunity_id: '',
+                  fundraising_id: selectedFundraising.id,
+                  tags: [],
+                  notes: '',
+                  created_at: '',
+                  updated_at: ''
+                });
+                setIsTaskEditMode(true);
+                setActiveView('task-detail');
+              }}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center"
+            >
+              <svg className="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
+              Create Task
+            </button>
+          </div>
+          <div className="p-4 bg-white border border-gray-200 border-t-0 rounded-b-lg">
+            {tasks.filter(task => task.fundraising_id === selectedFundraising.id).length > 0 ? (
+              <div className="space-y-3">
+                {tasks.filter(task => task.fundraising_id === selectedFundraising.id).map(task => (
+                  <div key={task.id} className="flex items-center justify-between p-3 border border-gray-200 rounded-md hover:bg-gray-50">
+                    <div className="flex-1">
+                      <h4 className="font-medium text-gray-900">{task.title}</h4>
+                      <p className="text-sm text-gray-600">{task.description}</p>
+                      <div className="flex items-center space-x-4 mt-1">
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
+                          task.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                          task.status === 'In Progress' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {task.status}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          Priority: {task.priority}
+                        </span>
+                        {task.due_date && (
+                          <span className="text-xs text-gray-500">
+                            Due: {new Date(task.due_date).toLocaleDateString()}
+                          </span>
+                        )}
+                        {(task.assigned_to || task.contact_id) && (
+                          <span className="text-xs text-gray-500">
+                            Assigned to: {
+                              task.assigned_to && users.find(u => u.id === task.assigned_to)
+                                ? `👤 ${users.find(u => u.id === task.assigned_to)?.name}`
+                                : task.contact_id && contacts.find(c => c.id === task.contact_id)
+                                ? `📞 ${contacts.find(c => c.id === task.contact_id)?.name}`
+                                : 'Unknown'
+                            }
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedTask(task);
+                        setIsTaskEditMode(true);
+                        setTaskEditFormData(task);
+                        setActiveView('task-detail');
+                      }}
+                      className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                    >
+                      View/Edit
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <h3 className="mt-2 text-sm font-medium text-gray-900">No tasks</h3>
+                <p className="mt-1 text-sm text-gray-500">Get started by creating a new task for this fundraising campaign.</p>
+              </div>
+            )}
+          </div>
+        </div>
+
         {/* Delete Confirmation Dialog */}
         {showFundraisingDeleteConfirm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -2506,14 +2667,16 @@ const AppContent: React.FC = () => {
   };
 
   const renderOpportunityDetail = () => {
-    if (!selectedOpportunity) return null;
+    if (!selectedOpportunity && !isOppEditMode) return null;
 
     return (
       <div>
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Opportunity Details</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            {isOppEditMode && !selectedOpportunity ? 'Create New Opportunity' : 'Opportunity Details'}
+          </h2>
           <div className="flex space-x-3">
-            {!isOppEditMode ? (
+            {!isOppEditMode && selectedOpportunity ? (
               <>
                 <button
                   onClick={() => {
@@ -2531,12 +2694,15 @@ const AppContent: React.FC = () => {
                   🗑️ Delete
                 </button>
               </>
-            ) : (
+            ) : isOppEditMode ? (
               <>
                 <button
                   onClick={() => {
-                    // TODO: Implement save logic
-                    setIsOppEditMode(false);
+                    if (selectedOpportunity) {
+                      handleSaveOpportunity();
+                    } else {
+                      handleCreateOpportunity();
+                    }
                   }}
                   disabled={loading}
                   className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
@@ -2547,13 +2713,16 @@ const AppContent: React.FC = () => {
                   onClick={() => {
                     setIsOppEditMode(false);
                     setOppEditFormData(null);
+                    if (!selectedOpportunity) {
+                      setActiveView('opportunities');
+                    }
                   }}
                   className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
                 >
                   ❌ Cancel
                 </button>
               </>
-            )}
+            ) : null}
             <button
               onClick={() => setActiveView('opportunities')}
               className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
@@ -2563,54 +2732,62 @@ const AppContent: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Title</label>
-                  <p className="text-sm text-gray-900">{selectedOpportunity.title || 'N/A'}</p>
+        {isOppEditMode ? (
+          <OpportunityForm
+            opportunity={oppEditFormData}
+            onChange={setOppEditFormData}
+            users={users}
+          />
+        ) : selectedOpportunity ? (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Title</label>
+                    <p className="text-sm text-gray-900">{selectedOpportunity.title || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Organization</label>
+                    <p className="text-sm text-gray-900">{selectedOpportunity.organisation || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Status</label>
+                    <p className="text-sm text-gray-900">{selectedOpportunity.status || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Priority</label>
+                    <p className="text-sm text-gray-900">{selectedOpportunity.priority || 'N/A'}</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Organization</label>
-                  <p className="text-sm text-gray-900">{selectedOpportunity.organisation || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Status</label>
-                  <p className="text-sm text-gray-900">{selectedOpportunity.status || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Priority</label>
-                  <p className="text-sm text-gray-900">{selectedOpportunity.priority || 'N/A'}</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Financial Details</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Estimated Value</label>
+                    <p className="text-sm text-gray-900">{selectedOpportunity.estimated_value ? `$${selectedOpportunity.estimated_value.toLocaleString()}` : 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Probability</label>
+                    <p className="text-sm text-gray-900">{selectedOpportunity.probability ? `${selectedOpportunity.probability}%` : 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Expected Close Date</label>
+                    <p className="text-sm text-gray-900">{selectedOpportunity.target_close_date || 'N/A'}</p>
+                  </div>
                 </div>
               </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Financial Details</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Estimated Value</label>
-                  <p className="text-sm text-gray-900">{selectedOpportunity.estimated_value ? `$${selectedOpportunity.estimated_value.toLocaleString()}` : 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Probability</label>
-                  <p className="text-sm text-gray-900">{selectedOpportunity.probability ? `${selectedOpportunity.probability}%` : 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Expected Close Date</label>
-                  <p className="text-sm text-gray-900">{selectedOpportunity.target_close_date || 'N/A'}</p>
-                </div>
+            {selectedOpportunity.description && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-4">Description</h3>
+                <p className="text-sm text-gray-700">{selectedOpportunity.description}</p>
               </div>
-            </div>
+            )}
           </div>
-          {selectedOpportunity.description && (
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold mb-4">Description</h3>
-              <p className="text-sm text-gray-700">{selectedOpportunity.description}</p>
-            </div>
-          )}
-        </div>
+        ) : null}
 
         {/* Delete Confirmation Modal */}
         {showOppDeleteConfirm && (
@@ -2650,14 +2827,16 @@ const AppContent: React.FC = () => {
   };
 
   const renderTaskDetail = () => {
-    if (!selectedTask) return null;
+    if (!selectedTask && !isTaskEditMode) return null;
 
     return (
       <div>
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">Task Details</h2>
+          <h2 className="text-2xl font-bold text-gray-900">
+            {isTaskEditMode && !selectedTask ? 'Create New Task' : 'Task Details'}
+          </h2>
           <div className="flex space-x-3">
-            {!isTaskEditMode ? (
+            {!isTaskEditMode && selectedTask ? (
               <>
                 <button
                   onClick={() => {
@@ -2675,12 +2854,15 @@ const AppContent: React.FC = () => {
                   🗑️ Delete
                 </button>
               </>
-            ) : (
+            ) : isTaskEditMode ? (
               <>
                 <button
                   onClick={() => {
-                    // TODO: Implement save logic
-                    setIsTaskEditMode(false);
+                    if (selectedTask) {
+                      handleSaveTask();
+                    } else {
+                      handleCreateTask();
+                    }
                   }}
                   disabled={loading}
                   className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
@@ -2691,13 +2873,16 @@ const AppContent: React.FC = () => {
                   onClick={() => {
                     setIsTaskEditMode(false);
                     setTaskEditFormData(null);
+                    if (!selectedTask) {
+                      setActiveView('tasks');
+                    }
                   }}
                   className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
                 >
                   ❌ Cancel
                 </button>
               </>
-            )}
+            ) : null}
             <button
               onClick={() => setActiveView('tasks')}
               className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 transition-colors"
@@ -2707,57 +2892,64 @@ const AppContent: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Title</label>
-                  <p className="text-sm text-gray-900">{selectedTask.title || 'N/A'}</p>
+        {isTaskEditMode ? (
+          <TaskForm
+            task={taskEditFormData}
+            onChange={setTaskEditFormData}
+          />
+        ) : selectedTask ? (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Title</label>
+                    <p className="text-sm text-gray-900">{selectedTask.title || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Type</label>
+                    <p className="text-sm text-gray-900">{selectedTask.task_type || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Status</label>
+                    <p className="text-sm text-gray-900">{selectedTask.status || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Priority</label>
+                    <p className="text-sm text-gray-900">{selectedTask.priority || 'N/A'}</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Type</label>
-                  <p className="text-sm text-gray-900">{selectedTask.task_type || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Status</label>
-                  <p className="text-sm text-gray-900">{selectedTask.status || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Priority</label>
-                  <p className="text-sm text-gray-900">{selectedTask.priority || 'N/A'}</p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold mb-4">Assignment & Timeline</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Assigned To</label>
+                    <p className="text-sm text-gray-900">{selectedTask.assigned_to || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Due Date</label>
+                    <p className="text-sm text-gray-900">{selectedTask.due_date || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Created Date</label>
+                    <p className="text-sm text-gray-900">{selectedTask.created_at || 'N/A'}</p>
+                  </div>
                 </div>
               </div>
             </div>
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Assignment & Timeline</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Assigned To</label>
-                  <p className="text-sm text-gray-900">{selectedTask.assigned_to || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Due Date</label>
-                  <p className="text-sm text-gray-900">{selectedTask.due_date || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Created Date</label>
-                  <p className="text-sm text-gray-900">{selectedTask.created_at || 'N/A'}</p>
-                </div>
+            {selectedTask.description && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-4">Description</h3>
+                <p className="text-sm text-gray-700">{selectedTask.description}</p>
               </div>
-            </div>
+            )}
           </div>
-          {selectedTask.description && (
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold mb-4">Description</h3>
-              <p className="text-sm text-gray-700">{selectedTask.description}</p>
-            </div>
-          )}
-        </div>
+        ) : null}
 
         {/* Delete Confirmation Modal */}
-        {showTaskDeleteConfirm && (
+        {showTaskDeleteConfirm && selectedTask && (
           <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
             <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
               <div className="mt-3 text-center">
@@ -3078,7 +3270,7 @@ const AppContent: React.FC = () => {
             }}
             onCreateNew={() => {
               setSelectedOpportunity(null);
-              setIsOppEditMode(false);
+              setIsOppEditMode(true);
               setOppEditFormData(null);
               setActiveView('opportunity-detail');
             }}
@@ -3095,7 +3287,7 @@ const AppContent: React.FC = () => {
             }}
             onCreateNew={() => {
               setSelectedTask(null);
-              setIsTaskEditMode(false);
+              setIsTaskEditMode(true);
               setTaskEditFormData(null);
               setActiveView('task-detail');
             }}

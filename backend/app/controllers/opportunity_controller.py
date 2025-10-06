@@ -48,7 +48,8 @@ async def get_all_opportunities(
 ):
     """Get all investment opportunities"""
     opportunities = await Opportunity.find_all().skip(skip).to_list()
-    return [opportunity.dict() for opportunity in opportunities]
+    # Convert to dict and ensure id is a string
+    return [{"id": str(opportunity.id), **opportunity.model_dump(exclude={"id"})} for opportunity in opportunities]
 
 @opportunity_router.get("/{opportunity_id}", response_model=dict)
 async def get_opportunity(opportunity_id: PydanticObjectId):
@@ -56,7 +57,7 @@ async def get_opportunity(opportunity_id: PydanticObjectId):
     opportunity = await Opportunity.get(opportunity_id)
     if not opportunity:
         raise HTTPException(status_code=404, detail="Opportunity not found")
-    return opportunity.dict()
+    return {"id": str(opportunity.id), **opportunity.model_dump(exclude={"id"})}
 
 @opportunity_router.put("/{opportunity_id}", response_model=dict)
 async def update_opportunity(opportunity_id: PydanticObjectId, update_data: OpportunityUpdate):
@@ -86,4 +87,4 @@ async def delete_opportunity(opportunity_id: PydanticObjectId):
 async def get_opportunities_by_sector(sector: str):
     """Get opportunities by sector"""
     opportunities = await Opportunity.find({"sector": sector}).to_list()
-    return [opportunity.dict() for opportunity in opportunities]
+    return [{"id": str(opportunity.id), **opportunity.model_dump(exclude={"id"})} for opportunity in opportunities]

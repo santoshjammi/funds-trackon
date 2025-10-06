@@ -84,9 +84,9 @@ const TaskList: React.FC<TaskListProps> = ({ onSelectTask, onCreateNew }) => {
 
   const filteredAndSortedTasks = tasks
     .filter(task =>
-      task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      task.task_type.toLowerCase().includes(searchTerm.toLowerCase())
+      (task.title && task.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (task.description && task.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (task.task_type && task.task_type.toLowerCase().includes(searchTerm.toLowerCase()))
     )
     .sort((a, b) => {
       if (!sortField) return 0;

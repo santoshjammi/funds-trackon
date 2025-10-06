@@ -97,9 +97,7 @@ export interface Contact {
   // Timestamps
   created_at?: string;
   updated_at?: string;
-}
-
-export interface Fundraising {
+}export interface Fundraising {
   id?: string;
   status_open_closed: string;
   date_of_first_meeting_call?: string;
@@ -138,7 +136,7 @@ export interface User {
   employment_type: string;
   name: string;
   designation: string;
-  email: string;
+  email?: string;
   phone?: string;
   notes?: string;
   
@@ -158,41 +156,31 @@ export interface Organization {
   id?: string;
   name: string;
   industry?: string;
-  organization_type?: string;
   description?: string;
   website?: string;
-  
+  email?: string;
+  phone?: string;
+
   // Location information
   address?: string;
   city?: string;
-  state?: string;
   country?: string;
-  postal_code?: string;
-  geography_region?: string;
-  
-  // Contact information
-  contact_person?: string;
-  contact_designation?: string;
-  phone?: string;
-  email?: string;
-  
+  region?: string;
+
   // Business information
-  annual_revenue?: number;
-  employee_count?: number;
+  size?: string;
   founded_year?: number;
-  
-  // Investment information
-  investment_stage?: string;
-  previous_funding?: number;
-  
+  revenue?: string;
+
   // Relationship information
-  relationship_status?: string;
-  last_contact_date?: string;
-  next_action?: string;
-  
-  notes?: string;
   status?: string;
-  
+  relationship_type?: string;
+  priority?: string;
+
+  // Additional information
+  notes?: string;
+  tags?: string[];
+
   // Timestamps
   created_at?: string;
   updated_at?: string;
@@ -398,7 +386,9 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
 
 // Contact API functions
 export const contactsApi = {
-  getAll: (): Promise<Contact[]> => apiRequest<Contact[]>('/api/contacts/'),
+  getAll: (): Promise<Contact[]> => apiRequest<Contact[]>('/api/contacts/').then(contacts => 
+    contacts.map((contact: any) => ({ ...contact, id: contact._id || contact.id }))
+  ),
   getById: (id: string): Promise<Contact> => apiRequest<Contact>(`/api/contacts/${id}`),
   create: (contact: Omit<Contact, 'id'>): Promise<{message: string, id: string}> => 
     apiRequest<{message: string, id: string}>('/api/contacts/', {

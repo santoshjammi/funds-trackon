@@ -32,7 +32,7 @@ class UserResponse(BaseModel):
     employment_type: EmploymentType
     name: str
     designation: str
-    email: EmailStr
+    email: Optional[str] = None
     phone: Optional[str] = None
     notes: Optional[str] = None
     username: Optional[str] = None
@@ -48,7 +48,7 @@ class UserCreate(BaseModel):
     employment_type: EmploymentType
     name: str
     designation: str
-    email: EmailStr
+    email: Optional[str] = None
     phone: Optional[str] = None
     notes: Optional[str] = None
     username: Optional[str] = None
@@ -61,7 +61,7 @@ class UserUpdate(BaseModel):
     employment_type: Optional[EmploymentType] = None
     name: Optional[str] = None
     designation: Optional[str] = None
-    email: Optional[EmailStr] = None
+    email: Optional[str] = None
     phone: Optional[str] = None
     notes: Optional[str] = None
     username: Optional[str] = None

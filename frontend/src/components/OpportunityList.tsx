@@ -73,9 +73,9 @@ const OpportunityList: React.FC<OpportunityListProps> = ({ onSelectOpportunity, 
 
   const filteredAndSortedOpportunities = opportunities
     .filter(opp =>
-      opp.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      opp.organisation.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      opp.description?.toLowerCase().includes(searchTerm.toLowerCase())
+      (opp.title && opp.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (opp.organisation && opp.organisation.toLowerCase().includes(searchTerm.toLowerCase())) ||
+      (opp.description && opp.description.toLowerCase().includes(searchTerm.toLowerCase()))
     )
     .sort((a, b) => {
       if (!sortField) return 0;
