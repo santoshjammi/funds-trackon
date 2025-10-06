@@ -71,8 +71,6 @@ Tests the RBAC (Role-Based Access Control) endpoints to verify they work correct
 **Parameters:**
 
 - `-BaseUrl`: Base URL of the backend API (default: `http://localhost:8000`)
-
-
 - `-Token`: JWT authentication token for testing protected endpoints
 - `-SkipAuthTests`: Skip tests that require authentication
 
