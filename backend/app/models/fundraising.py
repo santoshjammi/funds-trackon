@@ -5,7 +5,7 @@ Based on summary_FR.json structure using MongoDB with Beanie ODM
 
 from beanie import Document
 from pydantic import Field
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from enum import Enum
 
@@ -60,6 +60,9 @@ class Fundraising(Document):
     
     # Contact reference
     contact_id: Optional[str] = Field(None, description="Reference to contact document")
+    
+    # Related documents (knowledge base)
+    document_ids: List[str] = Field(default=[], description="List of related document IDs")
     
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)

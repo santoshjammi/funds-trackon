@@ -18,6 +18,7 @@ from app.controllers.organization_controller import organization_router
 from app.controllers.meeting_controller import meeting_router
 from app.controllers.role_controller import role_router
 from app.controllers.analytics_controller import router as analytics_router
+from app.controllers.document_controller import document_router
 from app.models.database import init_db, close_mongo_connection
 from app.utils.config import get_settings
 
@@ -60,6 +61,7 @@ app.include_router(tracker_router, prefix="/api/tracker", tags=["tracker"])
 app.include_router(meeting_router, prefix="/api/meetings", tags=["meetings"])
 app.include_router(role_router, tags=["roles"])
 app.include_router(analytics_router, prefix="/api", tags=["analytics"])
+app.include_router(document_router, prefix="/api/documents", tags=["documents"])
 
 @app.get("/")
 async def root():

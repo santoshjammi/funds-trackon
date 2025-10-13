@@ -16,10 +16,12 @@ import OrganizationSelect from './components/OrganizationSelect';
 import ContactView from './components/ContactView';
 import OpportunityForm from './components/OpportunityForm';
 import TaskForm from './components/TaskForm';
+import Documents from './components/Documents';
+import UserSearch from './components/UserSearch';
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, loading: authLoading, login, logout, hasAnyRole } = useAuth();
-  const [activeView, setActiveView] = useState<'dashboard' | 'contacts' | 'contact-detail' | 'organizations' | 'organization-detail' | 'opportunities' | 'opportunity-detail' | 'tasks' | 'task-detail' | 'fundraising' | 'fundraising-detail' | 'users' | 'user-detail' | 'user-profile' | 'admin-settings' | 'reports'>('dashboard');
+  const [activeView, setActiveView] = useState<'dashboard' | 'contacts' | 'contact-detail' | 'organizations' | 'organization-detail' | 'opportunities' | 'opportunity-detail' | 'tasks' | 'task-detail' | 'fundraising' | 'fundraising-detail' | 'users' | 'user-detail' | 'user-profile' | 'admin-settings' | 'reports' | 'documents'>('dashboard');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [fundraising, setFundraising] = useState<Fundraising[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -89,6 +91,11 @@ const AppContent: React.FC = () => {
   const [isFundraisingEditMode, setIsFundraisingEditMode] = useState(false);
   const [showFundraisingDeleteConfirm, setShowFundraisingDeleteConfirm] = useState(false);
 
+  // Fundraising responsible search states
+  const [responsibleSearch, setResponsibleSearch] = useState('');
+  const [showResponsibleDropdown, setShowResponsibleDropdown] = useState(false);
+  const [selectedResponsibleIndex, setSelectedResponsibleIndex] = useState(-1);
+
   // Check backend connection on mount
   useEffect(() => {
     const checkBackend = async () => {
@@ -150,6 +157,37 @@ const AppContent: React.FC = () => {
       fetchData();
     }
   }, [activeView, backendStatus]);
+
+  // Load users and contacts data when needed for opportunity details
+  useEffect(() => {
+    if (activeView === 'opportunity-detail' && backendStatus === 'connected') {
+      const loadAssigneeData = async () => {
+        try {
+          const [userData, contactData] = await Promise.all([
+            users.length === 0 ? usersApi.getAll() : Promise.resolve(users),
+            contacts.length === 0 ? contactsApi.getAll() : Promise.resolve(contacts)
+          ]);
+          if (users.length === 0) setUsers(userData);
+          if (contacts.length === 0) setContacts(contactData);
+
+          // Also fetch the latest opportunity data if we have a selected opportunity
+          if (selectedOpportunity?.id) {
+            try {
+              const freshOpportunityData = await opportunitiesApi.getById(selectedOpportunity.id);
+              setSelectedOpportunity(freshOpportunityData);
+              // Update the opportunity in the list as well
+              setOpportunities(prev => prev.map(o => o.id === freshOpportunityData.id ? freshOpportunityData : o));
+            } catch (err) {
+              console.error('Failed to fetch fresh opportunity data:', err);
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load assignee data for opportunity detail:', err);
+        }
+      };
+      loadAssigneeData();
+    }
+  }, [activeView, backendStatus, users.length, contacts.length, selectedOpportunity?.id]);
 
   // Fetch current user data when authenticated
   useEffect(() => {
@@ -278,6 +316,16 @@ const AppContent: React.FC = () => {
             }`}
           >
             📊 Reports
+          </button>
+          <button
+            onClick={() => setActiveView('documents')}
+            className={`py-4 px-6 font-medium transition-colors border-b-2 ${
+              activeView === 'documents'
+                ? 'border-green-500 text-green-600 bg-green-50'
+                : 'border-transparent text-gray-600 hover:text-green-600 hover:border-green-300'
+            }`}
+          >
+            📚 Knowledge Base
           </button>
           {hasAnyRole(['Super Admin', 'Admin']) && (
             <button
@@ -495,9 +543,13 @@ const AppContent: React.FC = () => {
       setLoading(true);
       await opportunitiesApi.update(oppEditFormData.id, oppEditFormData);
 
+      // Fetch the updated opportunity data from the backend
+      const updatedOpportunity = await opportunitiesApi.getById(oppEditFormData.id);
+      
       // Update the selected opportunity and opportunities list
-      setSelectedOpportunity(oppEditFormData);
-      setOpportunities(opportunities.map(o => o.id === oppEditFormData.id ? oppEditFormData : o));
+      setSelectedOpportunity(updatedOpportunity);
+      setOpportunities(opportunities.map(o => o.id === oppEditFormData.id ? updatedOpportunity : o));
+      
       setIsOppEditMode(false);
       setError(null);
     } catch (err) {
@@ -1355,6 +1407,103 @@ const AppContent: React.FC = () => {
   const getProcessedFundraising = () => {
     const filtered = filterFundraising(fundraising);
     return sortFundraising(filtered);
+  };
+
+  // Pre-compute responsible (users only) data for instant access
+  const responsibleData = React.useMemo(() => {
+    const userMap = new Map<string, any>();
+    const allResponsibles: any[] = [];
+
+    users.forEach(user => {
+      if (!user.id) return;
+      const display = `👤 ${user.name} (${user.email || ''})`;
+      const searchText = `${user.name} ${user.email || ''}`.toLowerCase();
+      userMap.set(user.id, { type: 'user', data: user, display, searchText });
+      allResponsibles.push({ type: 'user', data: user, display, searchText });
+    });
+
+    return { userMap, allResponsibles };
+  }, [users]);
+
+  // Get display text for current responsible - instant lookup using pre-computed maps
+  const getResponsibleDisplay = React.useCallback(() => {
+    if (fundraisingEditFormData?.responsibility_tnifmc) {
+      const responsible = responsibleData.userMap.get(fundraisingEditFormData.responsibility_tnifmc);
+      return responsible ? responsible.display : '';
+    }
+    return '';
+  }, [fundraisingEditFormData?.responsibility_tnifmc, responsibleData]);
+
+  // Update responsible search when fundraising edit form changes
+  React.useEffect(() => {
+    setResponsibleSearch(getResponsibleDisplay());
+  }, [getResponsibleDisplay]);
+
+  // Ultra-fast filtering using pre-computed data
+  const filteredResponsibles = React.useMemo(() => {
+    if (!responsibleSearch.trim()) {
+      return responsibleData.allResponsibles;
+    }
+
+    const searchLower = responsibleSearch.toLowerCase();
+    return responsibleData.allResponsibles.filter(responsible =>
+      responsible.searchText.includes(searchLower)
+    );
+  }, [responsibleSearch, responsibleData]);
+
+  // Handle responsible input change
+  const handleResponsibleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setResponsibleSearch(value);
+    setShowResponsibleDropdown(true);
+    setSelectedResponsibleIndex(-1);
+  };
+
+  // Handle responsible selection
+  const handleResponsibleSelect = (responsible: any) => {
+    if (fundraisingEditFormData) {
+      setFundraisingEditFormData({
+        ...fundraisingEditFormData,
+        responsibility_tnifmc: responsible.data.id
+      });
+    }
+    setResponsibleSearch(responsible.display);
+    setShowResponsibleDropdown(false);
+    setSelectedResponsibleIndex(-1);
+  };
+
+  // Handle responsible keyboard navigation
+  const handleResponsibleKeyDown = (e: React.KeyboardEvent) => {
+    if (!showResponsibleDropdown) {
+      if (e.key === 'ArrowDown') {
+        setShowResponsibleDropdown(true);
+        setSelectedResponsibleIndex(0);
+      }
+      return;
+    }
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedResponsibleIndex(prev =>
+          prev < filteredResponsibles.length - 1 ? prev + 1 : prev
+        );
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedResponsibleIndex(prev => prev > 0 ? prev - 1 : -1);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        if (selectedResponsibleIndex >= 0 && filteredResponsibles[selectedResponsibleIndex]) {
+          handleResponsibleSelect(filteredResponsibles[selectedResponsibleIndex]);
+        }
+        break;
+      case 'Escape':
+        setShowResponsibleDropdown(false);
+        setSelectedResponsibleIndex(-1);
+        break;
+    }
   };
 
   // Handle organization selection for detail view
@@ -2451,7 +2600,54 @@ const AppContent: React.FC = () => {
             {renderField('Niveshya Request (₹ Cr)', selectedFundraising.tnifmc_request_inr_cr, 'tnifmc_request_inr_cr', 'number')}
             {renderField('Commitment Amount (₹ Cr)', selectedFundraising.commitment_amount_inr_cr, 'commitment_amount_inr_cr', 'number')}
             {renderField('Investor Type', selectedFundraising.investor_type, 'investor_type')}
-            {renderField('Responsible (Niveshya)', selectedFundraising.responsibility_tnifmc, 'responsibility_tnifmc')}
+            {/* Custom Responsible field with user search */}
+            <div className="border-b border-gray-200 py-3">
+              <div className="flex justify-between items-start">
+                <label className="block text-sm font-medium text-gray-700 w-1/3 pt-2">
+                  Responsible (Niveshya)
+                </label>
+                {isFundraisingEditMode && fundraisingEditFormData ? (
+                  <div className="ml-2 w-2/3 relative">
+                    <input
+                      type="text"
+                      value={responsibleSearch || getResponsibleDisplay()}
+                      onChange={handleResponsibleInputChange}
+                      onFocus={() => setShowResponsibleDropdown(true)}
+                      onBlur={() => setTimeout(() => setShowResponsibleDropdown(false), 200)}
+                      onKeyDown={handleResponsibleKeyDown}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Search and select team member..."
+                      title="Search for team members to assign responsibility"
+                      autoComplete="off"
+                    />
+                    {showResponsibleDropdown && filteredResponsibles.length > 0 && (
+                      <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto mt-1">
+                        {filteredResponsibles.map((responsible, index) => (
+                          <div
+                            key={responsible.data.id}
+                            onClick={() => handleResponsibleSelect(responsible)}
+                            className={`px-3 py-2 cursor-pointer hover:bg-blue-50 ${
+                              index === selectedResponsibleIndex ? 'bg-blue-100' : ''
+                            }`}
+                          >
+                            {responsible.display}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Search for team members to assign responsibility
+                    </p>
+                  </div>
+                ) : (
+                  <div className="ml-2 w-2/3 text-sm text-gray-900 pt-2">
+                    {selectedFundraising.responsibility_tnifmc 
+                      ? users.find(u => u.id === selectedFundraising.responsibility_tnifmc)?.name || 'Unknown User'
+                      : 'Unassigned'}
+                  </div>
+                )}
+              </div>
+            </div>
             {renderField('Current Status', selectedFundraising.current_status, 'current_status')}
             {renderField('First Meeting Date', selectedFundraising.date_of_first_meeting_call, 'date_of_first_meeting_call')}
             
@@ -2737,6 +2933,7 @@ const AppContent: React.FC = () => {
             opportunity={oppEditFormData}
             onChange={setOppEditFormData}
             users={users}
+            contacts={contacts}
           />
         ) : selectedOpportunity ? (
           <div className="bg-white rounded-lg shadow-lg p-6">
@@ -2759,6 +2956,29 @@ const AppContent: React.FC = () => {
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Priority</label>
                     <p className="text-sm text-gray-900">{selectedOpportunity.priority || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Assigned To</label>
+                    <p className="text-sm text-gray-900">
+                      {(() => {
+                        // First check assigned_to field (for users)
+                        if (selectedOpportunity.assigned_to) {
+                          const user = users.find(u => u.id === selectedOpportunity.assigned_to);
+                          if (user) return `${user.name} (${user.email})`;
+                          // If user not found but we have an assigned_to value, show it as-is
+                          return selectedOpportunity.assigned_to;
+                        }
+                        // Then check contact_id field (for contacts)
+                        if (selectedOpportunity.contact_id) {
+                          const contact = contacts.find(c => c.id === selectedOpportunity.contact_id);
+                          if (contact) return `${contact.name} (${contact.organisation || 'No Organization'})`;
+                          // If contact not found but we have a contact_id value, show it as-is
+                          return selectedOpportunity.contact_id;
+                        }
+                        // No assignment
+                        return 'Unassigned';
+                      })()}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -3297,6 +3517,8 @@ const AppContent: React.FC = () => {
         return renderOpportunityDetail();
       case 'task-detail':
         return renderTaskDetail();
+      case 'documents':
+        return <Documents />;
       default:
         return <Dashboard 
           onNavigateToContacts={(filter) => {

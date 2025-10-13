@@ -68,6 +68,9 @@ class Organization(Document):
     notes: Optional[str] = Field(None, description="Additional notes")
     tags: List[str] = Field(default=[], description="Organization tags")
     
+    # Related documents (knowledge base)
+    document_ids: List[str] = Field(default=[], description="List of related document IDs")
+    
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)

@@ -5,7 +5,7 @@ Based on rearrangedContacts.json structure using MongoDB with Beanie ODM
 
 from beanie import Document
 from pydantic import Field, EmailStr
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 
@@ -25,6 +25,9 @@ class Contact(Document):
     sub_location: Optional[str] = Field(None, description="Sub location")
     notes_comments: Optional[str] = Field(None, alias="Notes__Comments")
     status: Optional[str] = Field("Active", description="Contact status (Active, Inactive, etc.)")
+    
+    # Related documents (knowledge base)
+    document_ids: List[str] = Field(default=[], description="List of related document IDs")
     
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)

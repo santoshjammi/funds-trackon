@@ -1,13 +1,51 @@
-import React from 'react';
-import { Opportunity, User } from '../services/api';
+import React, { useState, useEffect } from 'react';
+import { Opportunity, User, Contact, usersApi, contactsApi } from '../services/api';
+import UserSearch from './UserSearch';
 
 interface OpportunityFormProps {
   opportunity: Opportunity | null;
   onChange: (opportunity: Opportunity) => void;
-  users: User[];
+  users?: User[];
+  contacts?: Contact[];
 }
 
-const OpportunityForm: React.FC<OpportunityFormProps> = ({ opportunity, onChange, users }) => {
+const OpportunityForm: React.FC<OpportunityFormProps> = ({ opportunity, onChange, users: propUsers = [], contacts: propContacts = [] }) => {
+  const [users, setUsers] = useState<User[]>(propUsers);
+  const [contacts, setContacts] = useState<Contact[]>(propContacts);
+  const [loading, setLoading] = useState(true);
+
+  // Update local state when props change
+  useEffect(() => {
+    if (propUsers.length > 0) {
+      setUsers(propUsers);
+    }
+    if (propContacts.length > 0) {
+      setContacts(propContacts);
+    }
+  }, [propUsers, propContacts]);
+
+  // Load users and contacts if not provided as props
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        setLoading(true);
+        const promises = [];
+        if (users.length === 0) {
+          promises.push(usersApi.getAll().then(userData => setUsers(userData)));
+        }
+        if (contacts.length === 0) {
+          promises.push(contactsApi.getAll().then(contactData => setContacts(contactData)));
+        }
+        await Promise.all(promises);
+      } catch (error) {
+        console.error('Error loading users/contacts for opportunity form:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadData();
+  }, []); // Run only once on mount
   // Provide default empty opportunity for creation
   const currentOpportunity = opportunity || {
     title: '',
@@ -18,9 +56,9 @@ const OpportunityForm: React.FC<OpportunityFormProps> = ({ opportunity, onChange
     estimated_value: undefined,
     probability: undefined,
     assigned_to: '',
+    contact_id: '',
     target_close_date: '',
     actual_close_date: '',
-    contact_id: '',
     created_at: '',
     updated_at: ''
   };
@@ -30,6 +68,20 @@ const OpportunityForm: React.FC<OpportunityFormProps> = ({ opportunity, onChange
       ...currentOpportunity,
       [field]: value
     });
+  };
+
+  // Get display text for assigned_to
+  const getAssignedToDisplay = () => {
+    if (currentOpportunity.assigned_to) {
+      const user = users.find(u => u.id === currentOpportunity.assigned_to);
+      if (user) return `${user.name} (${user.email})`;
+    }
+    if (currentOpportunity.contact_id) {
+      const contact = contacts.find(c => c.id === currentOpportunity.contact_id);
+      if (contact) return `${contact.name} (${contact.organisation || 'No Organization'})`;
+    }
+    // If not found, assume it's already a display string (backward compatibility)
+    return currentOpportunity.assigned_to || '';
   };
 
   return (
@@ -108,19 +160,23 @@ const OpportunityForm: React.FC<OpportunityFormProps> = ({ opportunity, onChange
               <label htmlFor="assigned_to" className="block text-sm font-medium text-gray-700 mb-1">
                 Assigned To
               </label>
-              <select
-                id="assigned_to"
-                value={currentOpportunity.assigned_to || ''}
-                onChange={(e) => handleChange('assigned_to', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select team member</option>
-                {users.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.email})
-                  </option>
-                ))}
-              </select>
+              <UserSearch
+                users={users}
+                contacts={contacts}
+                value={getAssignedToDisplay()}
+                onChange={(value, type, id) => {
+                  if (type === 'user') {
+                    handleChange('assigned_to', id);
+                    handleChange('contact_id', '');
+                  } else {
+                    handleChange('contact_id', id);
+                    handleChange('assigned_to', '');
+                  }
+                }}
+                placeholder="Search and select team member or contact"
+                includeContacts={true}
+                loading={loading}
+              />
             </div>
           </div>
         </div>
