@@ -5,6 +5,24 @@ import {
   UpdateRoleRequest, 
   UserRolesResponse 
 } from '../types/rbac';
+import {
+  DocumentMetadata,
+  DocumentCreateRequest,
+  DocumentUpdateRequest,
+  DocumentType,
+  DocumentCategory,
+  DocumentStatus
+} from '../types/documents';
+
+// Re-export document types for convenience
+export type {
+  DocumentMetadata,
+  DocumentCreateRequest,
+  DocumentUpdateRequest,
+  DocumentType,
+  DocumentCategory,
+  DocumentStatus
+} from '../types/documents';
 
 const API_BASE_URL =
   (typeof process !== 'undefined' && process.env && (process.env.REACT_APP_API_BASE_URL as string))
@@ -877,3 +895,147 @@ export const tasksApi = {
 // Health check function
 export const healthCheck = (): Promise<{message: string; status: string}> => 
   apiRequest<{message: string; status: string}>('/health');
+
+// Document/Knowledge Base API
+export const documentsApi = {
+  // Create a text document
+  create: (document: DocumentCreateRequest): Promise<DocumentMetadata> =>
+    apiRequest<DocumentMetadata>('/api/documents', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(document),
+    }),
+
+  // Upload a file document
+  upload: async (request: {
+    file: File;
+    title: string;
+    description?: string;
+    document_type: DocumentType;
+    category?: DocumentCategory;
+    fundraising_id?: string;
+    organization_id?: string;
+    contact_id?: string;
+    task_id?: string;
+    opportunity_id?: string;
+    meeting_id?: string;
+    tags?: string;
+    is_public?: boolean;
+  }): Promise<DocumentMetadata> => {
+    const formData = new FormData();
+    formData.append('file', request.file);
+    formData.append('title', request.title);
+    if (request.description) formData.append('description', request.description);
+    formData.append('document_type', request.document_type);
+    if (request.category) formData.append('category', request.category);
+    if (request.fundraising_id) formData.append('fundraising_id', request.fundraising_id);
+    if (request.organization_id) formData.append('organization_id', request.organization_id);
+    if (request.contact_id) formData.append('contact_id', request.contact_id);
+    if (request.task_id) formData.append('task_id', request.task_id);
+    if (request.opportunity_id) formData.append('opportunity_id', request.opportunity_id);
+    if (request.meeting_id) formData.append('meeting_id', request.meeting_id);
+    if (request.tags) formData.append('tags', request.tags);
+    if (request.is_public !== undefined) formData.append('is_public', request.is_public.toString());
+
+    const headers: Record<string, string> = {};
+    const token = getAuthToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE_URL}/api/documents/upload`, {
+      method: 'POST',
+      headers,
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Upload failed' }));
+      throw new Error(errorData.message || `HTTP ${response.status}`);
+    }
+
+    return response.json();
+  },
+
+  // Get documents with filtering
+  getAll: (params?: {
+    fundraising_id?: string;
+    organization_id?: string;
+    contact_id?: string;
+    task_id?: string;
+    opportunity_id?: string;
+    meeting_id?: string;
+    document_type?: DocumentType;
+    category?: DocumentCategory;
+    status?: DocumentStatus;
+    search?: string;
+    skip?: number;
+    limit?: number;
+  }): Promise<DocumentMetadata[]> => {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+    const queryString = queryParams.toString();
+    const url = `/api/documents${queryString ? `?${queryString}` : ''}`;
+    return apiRequest<DocumentMetadata[]>(url);
+  },
+
+  // Get single document
+  get: (id: string): Promise<DocumentMetadata> =>
+    apiRequest<DocumentMetadata>(`/api/documents/${id}`),
+
+  // Update document
+  update: (id: string, document: DocumentUpdateRequest): Promise<DocumentMetadata> =>
+    apiRequest<DocumentMetadata>(`/api/documents/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(document),
+    }),
+
+  // Delete document
+  delete: (id: string): Promise<{message: string}> =>
+    apiRequest<{message: string}>(`/api/documents/${id}`, {
+      method: 'DELETE',
+    }),
+
+  // Download document file
+  download: async (id: string): Promise<Blob> => {
+    const headers: Record<string, string> = {};
+    const token = getAuthToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const response = await fetch(`${API_BASE_URL}/api/documents/${id}/download`, {
+      method: 'GET',
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Download failed' }));
+      throw new Error(errorData.message || `HTTP ${response.status}`);
+    }
+
+    return response.blob();
+  },
+
+  // Get knowledge base documents for an entity
+  getKnowledgeBase: (
+    entityType: 'fundraising' | 'organization' | 'contact' | 'task' | 'opportunity' | 'meeting',
+    entityId: string,
+    documentType?: DocumentType,
+    category?: DocumentCategory
+  ): Promise<DocumentMetadata[]> => {
+    const queryParams = new URLSearchParams();
+    if (documentType) queryParams.append('document_type', documentType);
+    if (category) queryParams.append('category', category);
+    const queryString = queryParams.toString();
+    const url = `/api/documents/knowledge-base/${entityType}/${entityId}${queryString ? `?${queryString}` : ''}`;
+    return apiRequest<DocumentMetadata[]>(url);
+  },
+};

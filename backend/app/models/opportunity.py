@@ -5,7 +5,7 @@ Using MongoDB with Beanie ODM
 
 from beanie import Document
 from pydantic import Field
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from enum import Enum
 
@@ -47,6 +47,9 @@ class Opportunity(Document):
     # Timeline
     target_close_date: Optional[datetime] = Field(None, description="Target closure date")
     actual_close_date: Optional[datetime] = Field(None, description="Actual closure date")
+    
+    # Related documents (knowledge base)
+    document_ids: List[str] = Field(default=[], description="List of related document IDs")
     
     # Timestamps
     created_at: datetime = Field(default_factory=datetime.utcnow)
