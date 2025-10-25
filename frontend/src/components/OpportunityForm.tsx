@@ -166,11 +166,17 @@ const OpportunityForm: React.FC<OpportunityFormProps> = ({ opportunity, onChange
                 value={getAssignedToDisplay()}
                 onChange={(value, type, id) => {
                   if (type === 'user') {
-                    handleChange('assigned_to', id);
-                    handleChange('contact_id', '');
+                    onChange({
+                      ...currentOpportunity,
+                      assigned_to: id,
+                      contact_id: ''
+                    });
                   } else {
-                    handleChange('contact_id', id);
-                    handleChange('assigned_to', '');
+                    onChange({
+                      ...currentOpportunity,
+                      contact_id: id,
+                      assigned_to: ''
+                    });
                   }
                 }}
                 placeholder="Search and select team member or contact"

@@ -11,6 +11,7 @@ backend/venv
 *.pyc
 *.pyo
 *.pyd
+**/*.pyc
 __pycache__/
 backend/app/models/__pycache__/
 backend/app/schemas/__pycache__/
@@ -24,4 +25,5 @@ backend/tests/test_data/__pycache__/
 backend/migrations/versions/__pycache__/
 backend/migrations/__pycache__/
 backend/app/controllers/__pycache__/
+backend/app/controllers/__pycache__/*.pyc
 backend/app/__pycache__/
