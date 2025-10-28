@@ -154,7 +154,7 @@ async def create_default_roles():
         PermissionType.VIEW_TRACKER, PermissionType.CREATE_TRACKER, 
         PermissionType.EDIT_TRACKER,
         PermissionType.VIEW_MEETINGS, PermissionType.CREATE_MEETINGS, 
-        PermissionType.EDIT_MEETINGS,
+        PermissionType.EDIT_MEETINGS, PermissionType.DELETE_MEETINGS,
         
         # View users and reports
         PermissionType.VIEW_USERS,

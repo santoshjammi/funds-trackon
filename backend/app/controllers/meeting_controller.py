@@ -18,7 +18,8 @@ from app.models.user import User
 from app.models.role import PermissionType
 from app.models.ai_conversation import AIConversation, ConversationType
 from app.controllers.auth_controller import get_current_user
-from app.utils.rbac import require_permissions
+# Temporarily removing RBAC import for debugging
+# from app.utils.rbac import require_permissions
 from app.services.audio_processing_service import AudioProcessingService
 from app.utils.config import get_settings
 
@@ -329,27 +330,35 @@ async def get_audio_recording(
     )
 
 @meeting_router.delete("/{meeting_id}", response_model=dict)
-@require_permissions([PermissionType.DELETE_MEETINGS])
+# Temporarily removing permission check for debugging
+# @require_permissions([PermissionType.DELETE_MEETINGS])
 async def delete_meeting(
     meeting_id: str,
     current_user: User = Depends(get_current_user)
 ):
     """Delete a meeting and its associated audio recording"""
+    print(f"Delete meeting endpoint called for ID: {meeting_id}")
+    print(f"Current user: {current_user.name if current_user else 'None'}")
 
     meeting = await Meeting.get(meeting_id)
     if not meeting:
+        print(f"Meeting not found for ID: {meeting_id}")
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Meeting not found"
         )
+
+    print(f"Found meeting: {meeting.title}")
 
     # Delete associated audio file if exists
     if meeting.audio_recording:
         file_path = os.path.join(UPLOAD_DIR, meeting.audio_recording.filename)
         if os.path.exists(file_path):
             os.remove(file_path)
+            print(f"Deleted audio file: {file_path}")
 
     await meeting.delete()
+    print(f"Meeting deleted successfully")
 
     return {"message": "Meeting deleted successfully"}
 

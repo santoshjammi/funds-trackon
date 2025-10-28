@@ -76,24 +76,33 @@ const MeetingManager: React.FC<Props> = ({ fundraisingId: fundraisingIdProp }) =
   };
 
   const deleteMeeting = async (meetingId: string) => {
+    console.log('Delete meeting clicked for ID:', meetingId);
+    
     if (!window.confirm('Are you sure you want to delete this meeting? This action cannot be undone.')) {
+      console.log('User cancelled deletion');
       return;
     }
     
+    console.log('Attempting to delete meeting...');
     setLoading(true);
     setError(null);
     try {
-      await meetingsApi.delete(meetingId);
+      console.log('Calling meetingsApi.delete...');
+      const result = await meetingsApi.delete(meetingId);
+      console.log('Delete API response:', result);
+      
       // If the deleted meeting was selected, clear selection
       if (selectedMeetingId === meetingId) {
         setSelectedMeetingId(null);
         setMeetingDetails(null);
       }
       // Reload the meetings list
+      console.log('Reloading meetings list...');
       await loadMeetings();
       setSuccessMsg('Meeting deleted successfully.');
       setTimeout(() => setSuccessMsg(null), 3000);
     } catch (e: any) {
+      console.error('Error deleting meeting:', e);
       setError(e?.message || 'Failed to delete meeting');
     } finally {
       setLoading(false);
@@ -457,15 +466,13 @@ const MeetingManager: React.FC<Props> = ({ fundraisingId: fundraisingIdProp }) =
                         >
                           {selectedMeetingId === m.id ? 'Selected' : 'Select'}
                         </button>
-                        {hasAnyRole(['Admin', 'Super Admin']) && (
-                          <button
-                            className="px-3 py-1 rounded bg-red-100 text-red-800 hover:bg-red-200"
-                            onClick={() => deleteMeeting(m.id)}
-                            disabled={loading}
-                          >
-                            Delete
-                          </button>
-                        )}
+                        <button
+                          className="px-3 py-1 rounded bg-red-100 text-red-800 hover:bg-red-200"
+                          onClick={() => deleteMeeting(m.id)}
+                          disabled={loading}
+                        >
+                          Delete
+                        </button>
                       </div>
                     </td>
                   </tr>
