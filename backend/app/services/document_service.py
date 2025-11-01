@@ -242,3 +242,112 @@ class DocumentService:
         document.updated_at = datetime.utcnow()
         await document.save()
         return document
+
+    async def create_meeting_knowledge_document(self, meeting_id: str) -> Optional[Document]:
+        """Create or update knowledge base document from meeting data"""
+        from app.models.meeting import Meeting
+        from app.models.fundraising import Fundraising
+        from app.models.contact import Contact
+        
+        meeting = await Meeting.get(meeting_id)
+        if not meeting:
+            return None
+            
+        # Get related data for context
+        fundraising = await Fundraising.get(meeting.fundraising_id) if meeting.fundraising_id else None
+        contact = await Contact.get(meeting.contact_id) if meeting.contact_id else None
+        
+        if not fundraising:
+            # Cannot create knowledge document without organization context
+            return None
+            
+        # Find or create organization by name from fundraising
+        from app.models.organization import Organization
+        organization = await Organization.find_one({"name": fundraising.organisation})
+        
+        if not organization:
+            # Create organization if it doesn't exist
+            organization = Organization(
+                name=fundraising.organisation,
+                status="Active",
+                relationship_type="Client"
+            )
+            await organization.insert()
+            
+        # Check if document already exists for this meeting
+        existing_docs = await Document.find({"meeting_id": meeting_id}).to_list()
+        
+        # Prepare document content
+        content_parts = []
+        
+        # Add meeting basic info
+        content_parts.append(f"# Meeting: {meeting.title}")
+        content_parts.append(f"**Date:** {meeting.scheduled_date or meeting.actual_date}")
+        content_parts.append(f"**Type:** {meeting.meeting_type}")
+        content_parts.append(f"**Status:** {meeting.status}")
+        
+        if meeting.location:
+            content_parts.append(f"**Location:** {meeting.location}")
+            
+        if meeting.agenda:
+            content_parts.append(f"\n## Agenda\n{meeting.agenda}")
+            
+        # Add manual notes if present
+        if meeting.notes:
+            content_parts.append(f"\n## Notes\n{meeting.notes}")
+            
+        # Add AI-generated content
+        if meeting.ai_summary:
+            content_parts.append(f"\n## AI Summary\n{meeting.ai_summary}")
+            
+        if meeting.ai_key_points:
+            content_parts.append(f"\n## Key Points\n" + "\n".join([f"- {point}" for point in meeting.ai_key_points]))
+            
+        if meeting.ai_action_items:
+            content_parts.append(f"\n## Action Items\n" + "\n".join([f"- {item}" for item in meeting.ai_action_items]))
+            
+        # Add transcript if available
+        if meeting.audio_recording and meeting.audio_recording.transcript:
+            content_parts.append(f"\n## Transcript\n{meeting.audio_recording.transcript}")
+            
+        content = "\n\n".join(content_parts)
+        
+        # Determine document title
+        title = f"Meeting: {meeting.title} - {fundraising.organisation}"
+        
+        # Prepare relationship data
+        contact_ids = [str(contact.id)] if contact else []
+        user_ids = []
+        if meeting.created_by:
+            user_ids.append(meeting.created_by)
+            
+        # Create or update document
+        if existing_docs:
+            # Update existing document
+            doc = existing_docs[0]
+            doc.title = title
+            doc.content = content
+            doc.contact_ids = list(set(doc.contact_ids + contact_ids))
+            doc.user_ids = list(set(doc.user_ids + user_ids))
+            doc.related_fundraising_ids = list(set(doc.related_fundraising_ids + [str(fundraising.id)]))
+            doc.updated_at = datetime.utcnow()
+            await doc.save()
+            return doc
+        else:
+            # Create new document
+            doc = Document(
+                title=title,
+                content=content,
+                document_type=DocumentType.MEETING_MINUTES,
+                category=DocumentCategory.MEETING_MINUTES,
+                status=DocumentStatus.ACTIVE,
+                organization_id=organization.id,
+                organization_name=organization.name,
+                meeting_id=meeting_id,
+                contact_ids=contact_ids,
+                user_ids=user_ids,
+                related_fundraising_ids=[str(fundraising.id)],
+                created_by=meeting.created_by or "system"
+            )
+            await doc.insert()
+            return doc

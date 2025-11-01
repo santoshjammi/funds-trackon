@@ -66,6 +66,15 @@ class AudioProcessingService:
             meeting.updated_at = datetime.utcnow()
             await meeting.save()
 
+            # Automatically create/update knowledge base document
+            try:
+                from app.services.document_service import DocumentService
+                doc_service = DocumentService()
+                await doc_service.create_meeting_knowledge_document(meeting_id)
+            except Exception as e:
+                # Log error but don't fail the audio processing
+                print(f"Warning: Failed to create knowledge base document for meeting {meeting_id}: {str(e)}")
+
             return {
                 "status": "success",
                 "transcript": transcript,

@@ -223,6 +223,16 @@ async def update_meeting(
     meeting.updated_at = datetime.utcnow()
     await meeting.save()
 
+    # Automatically sync to knowledge base if notes or other content was updated
+    if "notes" in update_dict or any(field in update_dict for field in ["agenda", "ai_summary", "ai_key_points", "ai_action_items"]):
+        try:
+            from app.services.document_service import DocumentService
+            doc_service = DocumentService()
+            await doc_service.create_meeting_knowledge_document(meeting_id)
+        except Exception as e:
+            # Log error but don't fail the meeting update
+            print(f"Warning: Failed to sync meeting {meeting_id} to knowledge base: {str(e)}")
+
     return {
         "message": "Meeting updated successfully",
         "meeting": meeting
