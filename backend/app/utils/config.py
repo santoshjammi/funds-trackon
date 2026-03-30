@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     """Application settings"""
     
     # MongoDB settings
-    mongodb_url: str = "mongodb://localhost:27019"
+    mongodb_url: str = "mongodb://localhost:27017"
     database_name: str = "trackon_lead_management"
     
     # Port settings

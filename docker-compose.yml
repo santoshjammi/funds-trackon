@@ -11,6 +11,9 @@ services:
       - "${MONGO_PORT:-27019}:27017"
     volumes:
       - mongo_data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d:ro
+    environment:
+      - MONGO_INITDB_DATABASE=funds_tracker_db
     networks:
       - appnet
 
