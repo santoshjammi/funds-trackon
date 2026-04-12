@@ -1,110 +1,77 @@
 import React from 'react';
 import { Task } from '../services/api';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
 
 interface TaskViewProps {
   task: Task;
 }
 
 const TaskView: React.FC<TaskViewProps> = ({ task }) => {
+  const Field = ({ label, value }: { label: string; value?: string | null }) => (
+    <div>
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+      <p className="mt-0.5 text-sm">{value || '—'}</p>
+    </div>
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-          <div className="space-y-3">
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader><CardTitle className="text-base">Basic Information</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <Field label="Title" value={task.title} />
+            <Field label="Task Type" value={task.task_type} />
             <div>
-              <label className="block text-sm font-medium text-gray-700">Title</label>
-              <p className="text-sm text-gray-900">{task.title || 'N/A'}</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</p>
+              <div className="mt-1"><Badge variant="secondary">{task.status || '—'}</Badge></div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Task Type</label>
-              <p className="text-sm text-gray-900">{task.task_type || 'N/A'}</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Priority</p>
+              <div className="mt-1">
+                <Badge variant={task.priority === 'high' ? 'destructive' : task.priority === 'medium' ? 'warning' : 'secondary'}>
+                  {task.priority || '—'}
+                </Badge>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Status</label>
-              <p className="text-sm text-gray-900">{task.status || 'N/A'}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Priority</label>
-              <p className="text-sm text-gray-900">{task.priority || 'N/A'}</p>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div>
-          <h3 className="text-lg font-semibold mb-4">Assignment & Timeline</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Assigned To</label>
-              <p className="text-sm text-gray-900">{task.assigned_to || 'Unassigned'}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Assigned By</label>
-              <p className="text-sm text-gray-900">{task.assigned_by || 'N/A'}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Due Date</label>
-              <p className="text-sm text-gray-900">{task.due_date || 'N/A'}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Completed Date</label>
-              <p className="text-sm text-gray-900">{task.completed_date || 'N/A'}</p>
-            </div>
-          </div>
-        </div>
+        <Card>
+          <CardHeader><CardTitle className="text-base">Assignment &amp; Timeline</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <Field label="Assigned To" value={task.assigned_to || 'Unassigned'} />
+            <Field label="Assigned By" value={task.assigned_by} />
+            <Field label="Due Date" value={task.due_date} />
+            <Field label="Completed Date" value={task.completed_date} />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader><CardTitle className="text-base">Related Records</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <Field label="Contact ID" value={task.contact_id} />
+            <Field label="Opportunity ID" value={task.opportunity_id} />
+            <Field label="Fundraising ID" value={task.fundraising_id} />
+          </CardContent>
+        </Card>
+
+        {(task.description || task.notes || (task.tags && task.tags.length > 0)) && (
+          <Card>
+            <CardHeader><CardTitle className="text-base">Notes &amp; Details</CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {task.description && <Field label="Description" value={task.description} />}
+              {task.notes && <Field label="Notes" value={task.notes} />}
+              {task.tags && task.tags.length > 0 && <Field label="Tags" value={task.tags.join(', ')} />}
+            </CardContent>
+          </Card>
+        )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h3 className="text-lg font-semibold mb-4">Related Records</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Contact ID</label>
-              <p className="text-sm text-gray-900">{task.contact_id || 'N/A'}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Opportunity ID</label>
-              <p className="text-sm text-gray-900">{task.opportunity_id || 'N/A'}</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Fundraising ID</label>
-              <p className="text-sm text-gray-900">{task.fundraising_id || 'N/A'}</p>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-lg font-semibold mb-4">Additional Information</h3>
-          <div className="space-y-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Tags</label>
-              <p className="text-sm text-gray-900">{task.tags?.join(', ') || 'N/A'}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {task.description && (
-        <div>
-          <h3 className="text-lg font-semibold mb-4">Description</h3>
-          <p className="text-sm text-gray-700">{task.description}</p>
-        </div>
-      )}
-
-      {task.notes && (
-        <div>
-          <h3 className="text-lg font-semibold mb-4">Notes</h3>
-          <p className="text-sm text-gray-700">{task.notes}</p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm text-gray-500">
-        <div>
-          <span className="font-medium">Created:</span> {task.created_at || 'N/A'}
-        </div>
-        <div>
-          <span className="font-medium">Updated:</span> {task.updated_at || 'N/A'}
-        </div>
+      <div className="flex gap-8 text-sm text-muted-foreground">
+        <span><span className="font-medium text-foreground">Created:</span> {task.created_at || '—'}</span>
+        <span><span className="font-medium text-foreground">Updated:</span> {task.updated_at || '—'}</span>
       </div>
     </div>
   );

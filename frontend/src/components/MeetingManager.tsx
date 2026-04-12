@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Download, Eye, EyeOff, Loader2, Mic, RefreshCw, Trash2 } from 'lucide-react';
 import {
   meetingsApi,
   MeetingCreateRequest,
@@ -7,6 +8,15 @@ import {
 } from '../services/api';
 import MeetingRecorder from './MeetingRecorder';
 import { useAuth } from '../contexts/AuthContext';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { SelectNative } from './ui/select-native';
+import { Separator } from './ui/separator';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 
 type Props = {
   fundraisingId?: string;
@@ -314,27 +324,27 @@ const MeetingManager: React.FC<Props> = ({ fundraisingId: fundraisingIdProp }) =
   return (
     <div className="space-y-6">
       {/* API Key configuration */}
-      <div className="bg-white shadow rounded p-4">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <label className="block text-sm text-gray-600 mb-1">OpenAI API key (audio processing)</label>
-            <input
-              type={showKey ? 'text' : 'password'}
-              className="w-80 max-w-full border rounded px-3 py-2"
-              placeholder="sk-..."
-              value={openaiKey}
-              onChange={(e) => setOpenaiKey(e.target.value)}
-              autoComplete="off"
-            />
-            <p className="mt-1 text-xs text-gray-500">Stored in this browser only; sent only for processing operations.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button className="px-3 py-2 border rounded" onClick={() => setShowKey((s) => !s)}>
-              {showKey ? 'Hide' : 'Show'}
-            </button>
-            <button
-              className="px-3 py-2 bg-gray-800 text-white rounded"
-              onClick={() => {
+      <Card>
+        <CardContent className="pt-5">
+          <div className="flex items-end justify-between gap-4 flex-wrap">
+            <div className="flex-1 min-w-[280px] space-y-1.5">
+              <Label htmlFor="openai-key">OpenAI API key (audio processing)</Label>
+              <Input
+                id="openai-key"
+                type={showKey ? 'text' : 'password'}
+                className="w-80 max-w-full"
+                placeholder="sk-..."
+                value={openaiKey}
+                onChange={(e) => setOpenaiKey(e.target.value)}
+                autoComplete="off"
+              />
+              <p className="text-xs text-muted-foreground">Stored in this browser only; sent only for processing operations.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowKey((s) => !s)}>
+                {showKey ? <><EyeOff className="h-4 w-4 mr-1" />Hide</> : <><Eye className="h-4 w-4 mr-1" />Show</>}
+              </Button>
+              <Button size="sm" onClick={() => {
                 try {
                   if (openaiKey) localStorage.setItem('openai_api_key', openaiKey);
                   else localStorage.removeItem('openai_api_key');
@@ -343,361 +353,303 @@ const MeetingManager: React.FC<Props> = ({ fundraisingId: fundraisingIdProp }) =
                 } catch {
                   setError('Failed to store API key.');
                 }
-              }}
-            >
-              Save
-            </button>
-          </div>
-        </div>
-      </div>
-      {!isEmbedded && (
-        <div className="bg-white shadow rounded p-4">
-          <h2 className="text-lg font-semibold mb-3">Meetings for a Fundraising Campaign</h2>
-          <div className="flex gap-2 items-end flex-wrap">
-            <div className="flex-1 min-w-[260px]">
-              <label htmlFor="fundraisingId" className="block text-sm text-gray-600 mb-1">Fundraising ID</label>
-              <input
-                id="fundraisingId"
-                className="w-full border rounded px-3 py-2"
-                placeholder="Enter fundraising campaign ID"
-                value={fundraisingId}
-                onChange={(e) => setFundraisingId(e.target.value)}
-              />
+              }}>Save</Button>
             </div>
-            <button
-              onClick={loadMeetings}
-              className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
-              disabled={!fundraisingId || loading}
-            >
-              {loading ? 'Loading…' : 'Load Meetings'}
-            </button>
           </div>
-          {error && <div className="mt-2 text-sm text-red-600">{error}</div>}
-        </div>
+        </CardContent>
+      </Card>
+      {!isEmbedded && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Meetings for a Fundraising Campaign</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2 items-end flex-wrap">
+              <div className="flex-1 min-w-[260px] space-y-1.5">
+                <Label htmlFor="fundraisingId">Fundraising ID</Label>
+                <Input
+                  id="fundraisingId"
+                  placeholder="Enter fundraising campaign ID"
+                  value={fundraisingId}
+                  onChange={(e) => setFundraisingId(e.target.value)}
+                />
+              </div>
+              <Button onClick={loadMeetings} disabled={!fundraisingId || loading}>
+                {loading ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Loading…</> : 'Load Meetings'}
+              </Button>
+            </div>
+            {error && <p className="mt-2 text-sm text-destructive">{error}</p>}
+          </CardContent>
+        </Card>
       )}
 
-      <div className="bg-white shadow rounded p-4" ref={createFormRef}>
-        <h3 className="text-md font-semibold mb-3">Create a Meeting</h3>
-        <div className="grid gap-3 md:grid-cols-2">
-          <div>
-            <label htmlFor="meetingTitle" className="block text-sm text-gray-600 mb-1">Title</label>
-            <input id="meetingTitle" className="w-full border rounded px-3 py-2" placeholder="Enter meeting title" value={title} onChange={(e) => setTitle(e.target.value)} />
-          </div>
-          <div>
-            <label htmlFor="meetingType" className="block text-sm text-gray-600 mb-1">Type</label>
-            <select id="meetingType" className="w-full border rounded px-3 py-2" value={meetingType} onChange={(e) => setMeetingType(e.target.value as any)}>
-              {defaultTypes.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label htmlFor="scheduledDate" className="block text-sm text-gray-600 mb-1">Scheduled Date/Time</label>
-            <input id="scheduledDate" type="datetime-local" className="w-full border rounded px-3 py-2" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
-          </div>
-          <div>
-            <label htmlFor="meetingLocation" className="block text-sm text-gray-600 mb-1">Location</label>
-            <input id="meetingLocation" className="w-full border rounded px-3 py-2" placeholder="Enter location (or leave blank)" value={location} onChange={(e) => setLocation(e.target.value)} />
-          </div>
-          <div className="md:col-span-2">
-            <label className="inline-flex items-center gap-2">
-              <input type="checkbox" checked={isVirtual} onChange={(e) => setIsVirtual(e.target.checked)} />
-              <span>Virtual Meeting</span>
-            </label>
-          </div>
-          <div className="md:col-span-2">
-            <label htmlFor="meetingAgenda" className="block text-sm text-gray-600 mb-1">Agenda</label>
-            <textarea id="meetingAgenda" className="w-full border rounded px-3 py-2" rows={3} placeholder="List key points to discuss" value={agenda} onChange={(e) => setAgenda(e.target.value)} />
-          </div>
-        </div>
-        <div className="mt-3">
-          <button onClick={createMeeting} disabled={!canCreate || loading} className="px-4 py-2 bg-green-600 text-white rounded disabled:opacity-50">
-            {loading ? 'Creating…' : 'Create Meeting'}
-          </button>
-          {!canCreate && (
-            <div className="text-xs text-gray-600 mt-2">Title, Type, and Date/Time are required.</div>
-          )}
-          {error && (
-            <div className="text-sm text-red-600 mt-2">{error}</div>
-          )}
-        </div>
-      </div>
-
-      <div className="bg-white shadow rounded p-4">
-        <h3 className="text-md font-semibold mb-3">Existing Meetings</h3>
-        {meetings.length === 0 ? (
-          <div className="border border-dashed border-gray-300 rounded p-6 bg-gray-50">
-            <div className="text-gray-800 font-medium mb-1">No meetings yet</div>
-            <div className="text-gray-600 text-sm mb-3">Create your first meeting to start recording notes and audio.</div>
-            <button
-              className="px-3 py-2 bg-green-600 text-white rounded"
-              onClick={() => createFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-            >
-              Create your first meeting
-            </button>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Title</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Scheduled</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Audio</th>
-                  <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {meetings.map((m) => (
-                  <tr key={m.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-2">{m.title}</td>
-                    <td className="px-4 py-2">{m.meeting_type}</td>
-                    <td className="px-4 py-2">{new Date(m.scheduled_date).toLocaleString()}</td>
-                    <td className="px-4 py-2">{m.has_audio ? 'Yes' : 'No'}</td>
-                    <td className="px-4 py-2 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button
-                          className={`px-3 py-1 rounded ${selectedMeetingId === m.id ? 'bg-blue-700 text-white' : 'bg-blue-100 text-blue-800'}`}
-                          onClick={() => {
-                            setSelectedMeetingId(m.id);
-                            loadMeetingDetails(m.id);
-                          }}
-                        >
-                          {selectedMeetingId === m.id ? 'Selected' : 'Select'}
-                        </button>
-                        <button
-                          className="px-3 py-1 rounded bg-red-100 text-red-800 hover:bg-red-200"
-                          onClick={() => deleteMeeting(m.id)}
-                          disabled={loading}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {selectedMeetingId && (
-        <div className="bg-white shadow rounded p-4" ref={recorderRef}>
-          <h3 className="text-md font-semibold mb-3">Record & Submit for Meeting</h3>
-          {successMsg && <div className="mb-3 text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">{successMsg}</div>}
-          <MeetingRecorder meetingId={selectedMeetingId} onUploaded={() => { loadMeetings(); if (selectedMeetingId) loadMeetingDetails(selectedMeetingId); }} />
-          <div className="mt-4 flex items-center gap-2">
-            <button
-              className="px-3 py-2 bg-purple-600 text-white rounded disabled:opacity-50"
-              disabled={processing || !meetingDetails?.has_audio}
-              onClick={handleProcessAudio}
-            >
-              {processing ? 'Processing…' : 'Process Audio (Transcribe + Analyze)'}
-            </button>
-            <button
-              className="px-3 py-2 bg-purple-100 text-purple-800 rounded disabled:opacity-50"
-              disabled={processing || !meetingDetails?.has_audio}
-              onClick={handleRetryProcessing}
-            >
-              Retry Processing
-            </button>
-            {!meetingDetails?.has_audio && (
-              <span className="text-sm text-gray-600">Upload audio first to enable processing.</span>
-            )}
-          </div>
-          <div className="mt-2 flex items-center gap-2">
-            <button
-              className="px-3 py-2 bg-gray-100 text-gray-800 rounded disabled:opacity-50"
-              disabled={!meetingDetails?.has_audio}
-              onClick={handleDownloadAudio}
-            >
-              Download Audio
-            </button>
-            <button
-              className="px-3 py-2 bg-gray-100 text-gray-800 rounded disabled:opacity-50"
-              disabled={!meetingDetails?.transcript}
-              onClick={handleDownloadTranscript}
-            >
-              Download Transcript
-            </button>
-            <div className="ml-2 flex items-center gap-2">
-              <select
-                className="border rounded px-2 py-1 text-sm"
-                value={dubVoice}
-                onChange={(e) => setDubVoice(e.target.value)}
-                aria-label="Autodub voice"
-              >
-                <option value="alloy">Alloy</option>
-                <option value="verse">Verse</option>
-                <option value="aria">Aria</option>
-              </select>
-              <button
-                className="px-3 py-2 bg-teal-600 text-white rounded disabled:opacity-50"
-                disabled={dubLoading || !meetingDetails?.transcript}
-                onClick={handleGenerateDub}
-                title={!meetingDetails?.transcript ? 'Process audio to generate transcript first' : 'Generate English dub'}
-              >
-                {dubLoading ? 'Autodubbing…' : 'Autodub to English'}
-              </button>
+      <Card ref={createFormRef}>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Create a Meeting</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="meetingTitle">Title</Label>
+              <Input id="meetingTitle" placeholder="Enter meeting title" value={title} onChange={(e) => setTitle(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="meetingType">Type</Label>
+              <SelectNative id="meetingType" value={meetingType} onChange={(e) => setMeetingType(e.target.value as any)}>
+                {defaultTypes.map((t) => <option key={t} value={t}>{t}</option>)}
+              </SelectNative>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="scheduledDate">Scheduled Date/Time</Label>
+              <Input id="scheduledDate" type="datetime-local" value={scheduledDate} onChange={(e) => setScheduledDate(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="meetingLocation">Location</Label>
+              <Input id="meetingLocation" placeholder="Enter location (or leave blank)" value={location} onChange={(e) => setLocation(e.target.value)} />
+            </div>
+            <div className="md:col-span-2">
+              <label className="inline-flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={isVirtual} onChange={(e) => setIsVirtual(e.target.checked)} className="rounded border-input" />
+                <span className="text-sm">Virtual Meeting</span>
+              </label>
+            </div>
+            <div className="md:col-span-2 space-y-1.5">
+              <Label htmlFor="meetingAgenda">Agenda</Label>
+              <Textarea id="meetingAgenda" rows={3} placeholder="List key points to discuss" value={agenda} onChange={(e) => setAgenda(e.target.value)} />
             </div>
           </div>
-          {meetingDetails && (
-            <div className="mt-6 space-y-4">
-              <div>
-                <h4 className="font-semibold text-gray-800 mb-1">Notes</h4>
-                <textarea
-                  className="w-full border rounded px-3 py-2"
-                  rows={4}
-                  placeholder="Type your notes here..."
-                  value={notesDraft}
-                  onChange={(e) => setNotesDraft(e.target.value)}
-                />
-                <div className="mt-2">
-                  <button
-                    className="px-3 py-2 bg-gray-800 text-white rounded disabled:opacity-50"
-                    onClick={async () => {
-                      if (!selectedMeetingId) return;
-                      try {
-                        await meetingsApi.update(selectedMeetingId, { notes: notesDraft });
-                        setMeetingDetails({ ...(meetingDetails as any), notes: notesDraft });
-                        setSuccessMsg('Notes saved');
-                        setTimeout(() => setSuccessMsg(null), 2000);
-                      } catch (e: any) {
-                        setError(e?.message || 'Failed to save notes');
-                      }
-                    }}
-                  >
-                    Save Notes
-                  </button>
-                </div>
+          <div className="flex items-center gap-3">
+            <Button onClick={createMeeting} disabled={!canCreate || loading}>
+              {loading ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Creating…</> : 'Create Meeting'}
+            </Button>
+            {!canCreate && <p className="text-xs text-muted-foreground">Title, Type, and Date/Time are required.</p>}
+            {error && <p className="text-sm text-destructive">{error}</p>}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Existing Meetings</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {meetings.length === 0 ? (
+            <div className="border border-dashed rounded-md p-6 bg-muted/40 text-center">
+              <p className="font-medium mb-1">No meetings yet</p>
+              <p className="text-sm text-muted-foreground mb-3">Create your first meeting to start recording notes and audio.</p>
+              <Button size="sm" onClick={() => createFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+                Create your first meeting
+              </Button>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Scheduled</TableHead>
+                    <TableHead>Audio</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {meetings.map((m) => (
+                    <TableRow key={m.id}>
+                      <TableCell className="font-medium">{m.title}</TableCell>
+                      <TableCell><Badge variant="secondary">{m.meeting_type}</Badge></TableCell>
+                      <TableCell className="text-sm">{new Date(m.scheduled_date).toLocaleString()}</TableCell>
+                      <TableCell>{m.has_audio ? <Badge variant="success">Yes</Badge> : <Badge variant="secondary">No</Badge>}</TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            size="sm"
+                            variant={selectedMeetingId === m.id ? 'default' : 'outline'}
+                            onClick={() => { setSelectedMeetingId(m.id); loadMeetingDetails(m.id); }}
+                          >
+                            {selectedMeetingId === m.id ? 'Selected' : 'Select'}
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => deleteMeeting(m.id)} disabled={loading}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {selectedMeetingId && (
+        <Card ref={recorderRef}>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Mic className="h-4 w-4" />Record &amp; Submit
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {successMsg && <p className="text-sm text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">{successMsg}</p>}
+            <MeetingRecorder meetingId={selectedMeetingId} onUploaded={() => { loadMeetings(); if (selectedMeetingId) loadMeetingDetails(selectedMeetingId); }} />
+            <Separator />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" disabled={processing || !meetingDetails?.has_audio} onClick={handleProcessAudio}>
+                {processing ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Processing…</> : 'Process Audio (Transcribe + Analyze)'}
+              </Button>
+              <Button size="sm" variant="outline" disabled={processing || !meetingDetails?.has_audio} onClick={handleRetryProcessing}>
+                <RefreshCw className="h-4 w-4 mr-1" />Retry Processing
+              </Button>
+              {!meetingDetails?.has_audio && <span className="text-sm text-muted-foreground">Upload audio first to enable processing.</span>}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="outline" disabled={!meetingDetails?.has_audio} onClick={handleDownloadAudio}>
+                <Download className="h-4 w-4 mr-1" />Download Audio
+              </Button>
+              <Button size="sm" variant="outline" disabled={!meetingDetails?.transcript} onClick={handleDownloadTranscript}>
+                <Download className="h-4 w-4 mr-1" />Download Transcript
+              </Button>
+              <div className="flex items-center gap-2">
+                <SelectNative value={dubVoice} onChange={(e) => setDubVoice(e.target.value)} aria-label="Autodub voice" className="w-28">
+                  <option value="alloy">Alloy</option>
+                  <option value="verse">Verse</option>
+                  <option value="aria">Aria</option>
+                </SelectNative>
+                <Button size="sm" disabled={dubLoading || !meetingDetails?.transcript} onClick={handleGenerateDub} title={!meetingDetails?.transcript ? 'Process audio to generate transcript first' : 'Generate English dub'}>
+                  {dubLoading ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Autodubbing…</> : 'Autodub to English'}
+                </Button>
               </div>
-              <div>
-                <h4 className="font-semibold text-gray-800">Processing Status</h4>
-                <div className="text-sm text-gray-700">
-                  {meetingDetails.audio_processing_status || (meetingDetails.has_audio ? 'Audio uploaded' : 'No audio')}
+            </div>
+
+            {meetingDetails && (
+              <div className="space-y-4 pt-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="meeting-notes">Notes</Label>
+                  <Textarea
+                    id="meeting-notes"
+                    rows={4}
+                    placeholder="Type your notes here..."
+                    value={notesDraft}
+                    onChange={(e) => setNotesDraft(e.target.value)}
+                  />
+                  <Button size="sm" onClick={async () => {
+                    if (!selectedMeetingId) return;
+                    try {
+                      await meetingsApi.update(selectedMeetingId, { notes: notesDraft });
+                      setMeetingDetails({ ...(meetingDetails as any), notes: notesDraft });
+                      setSuccessMsg('Notes saved');
+                      setTimeout(() => setSuccessMsg(null), 2000);
+                    } catch (e: any) {
+                      setError(e?.message || 'Failed to save notes');
+                    }
+                  }}>Save Notes</Button>
                 </div>
-              </div>
-              {meetingDetails.transcript && (
-                <div>
-                  <h4 className="font-semibold text-gray-800">Transcript</h4>
-                  <pre className="whitespace-pre-wrap text-sm p-3 bg-gray-50 rounded border border-gray-200">{meetingDetails.transcript}</pre>
+
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold">Processing Status</p>
+                  <p className="text-sm text-muted-foreground">
+                    {meetingDetails.audio_processing_status || (meetingDetails.has_audio ? 'Audio uploaded' : 'No audio')}
+                  </p>
                 </div>
-              )}
-              {(meetingDetails.ai_summary || meetingDetails.ai_action_items || meetingDetails.ai_risks || meetingDetails.ai_next_steps) && (
-                <div>
-                  <h4 className="font-semibold text-gray-800">AI Insights</h4>
-                  {meetingDetails.ai_summary && (
-                    <div className="mb-3">
-                      <div className="text-sm font-medium text-gray-700 mb-1">Summary</div>
-                      <div className="text-sm text-gray-800">{meetingDetails.ai_summary}</div>
-                    </div>
-                  )}
-                  {meetingDetails.ai_action_items && (
-                    <div className="mb-3">
-                      <div className="text-sm font-medium text-gray-700 mb-1">Action Items</div>
-                      <ul className="list-disc list-inside text-sm text-gray-800">
-                        {(Array.isArray(meetingDetails.ai_action_items) ? meetingDetails.ai_action_items : String(meetingDetails.ai_action_items).split('\n')).map((it, idx) => (
-                          <li key={idx}>{it}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {meetingDetails.ai_risks && (
-                    <div className="mb-3">
-                      <div className="text-sm font-medium text-gray-700 mb-1">Risks</div>
-                      <ul className="list-disc list-inside text-sm text-gray-800">
-                        {(Array.isArray(meetingDetails.ai_risks) ? meetingDetails.ai_risks : String(meetingDetails.ai_risks).split('\n')).map((it, idx) => (
-                          <li key={idx}>{it}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  {meetingDetails.ai_next_steps && (
-                    <div className="mb-3">
-                      <div className="text-sm font-medium text-gray-700 mb-1">Next Steps</div>
-                      <ul className="list-disc list-inside text-sm text-gray-800">
-                        {(Array.isArray(meetingDetails.ai_next_steps) ? meetingDetails.ai_next_steps : String(meetingDetails.ai_next_steps).split('\n')).map((it, idx) => (
-                          <li key={idx}>{it}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="border-t pt-4">
-                <h4 className="font-semibold text-gray-800 mb-2">Ask a custom question</h4>
-                <div className="grid gap-2">
-                  <div className="flex items-center gap-3">
-                    <label className="text-sm text-gray-700">Scope:</label>
-                    <label className="inline-flex items-center gap-1 text-sm">
-                      <input
-                        type="radio"
-                        name="promptScope"
-                        checked={promptScope === 'meeting'}
-                        onChange={() => setPromptScope('meeting')}
-                      />
+
+                {meetingDetails.transcript && (
+                  <div className="space-y-1.5">
+                    <p className="text-sm font-semibold">Transcript</p>
+                    <pre className="whitespace-pre-wrap text-sm p-3 bg-muted/40 rounded-md border">{meetingDetails.transcript}</pre>
+                  </div>
+                )}
+
+                {(meetingDetails.ai_summary || meetingDetails.ai_action_items || meetingDetails.ai_risks || meetingDetails.ai_next_steps) && (
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold">AI Insights</p>
+                    {meetingDetails.ai_summary && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Summary</p>
+                        <p className="text-sm">{meetingDetails.ai_summary}</p>
+                      </div>
+                    )}
+                    {meetingDetails.ai_action_items && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Action Items</p>
+                        <ul className="list-disc list-inside text-sm space-y-0.5">
+                          {(Array.isArray(meetingDetails.ai_action_items) ? meetingDetails.ai_action_items : String(meetingDetails.ai_action_items).split('\n')).map((it, idx) => (
+                            <li key={idx}>{it}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {meetingDetails.ai_risks && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Risks</p>
+                        <ul className="list-disc list-inside text-sm space-y-0.5">
+                          {(Array.isArray(meetingDetails.ai_risks) ? meetingDetails.ai_risks : String(meetingDetails.ai_risks).split('\n')).map((it, idx) => (
+                            <li key={idx}>{it}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {meetingDetails.ai_next_steps && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground mb-1">Next Steps</p>
+                        <ul className="list-disc list-inside text-sm space-y-0.5">
+                          {(Array.isArray(meetingDetails.ai_next_steps) ? meetingDetails.ai_next_steps : String(meetingDetails.ai_next_steps).split('\n')).map((it, idx) => (
+                            <li key={idx}>{it}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <Separator />
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold">Ask a custom question</p>
+                  <div className="flex items-center gap-4">
+                    <span className="text-sm">Scope:</span>
+                    <label className="inline-flex items-center gap-1.5 text-sm cursor-pointer">
+                      <input type="radio" name="promptScope" checked={promptScope === 'meeting'} onChange={() => setPromptScope('meeting')} />
                       This meeting only
                     </label>
-                    <label className="inline-flex items-center gap-1 text-sm">
-                      <input
-                        type="radio"
-                        name="promptScope"
-                        checked={promptScope === 'campaign'}
-                        onChange={() => setPromptScope('campaign')}
-                      />
+                    <label className="inline-flex items-center gap-1.5 text-sm cursor-pointer">
+                      <input type="radio" name="promptScope" checked={promptScope === 'campaign'} onChange={() => setPromptScope('campaign')} />
                       All meetings in this campaign
                     </label>
                   </div>
-                  <textarea
+                  <Textarea
                     id="customPrompt"
-                    className="w-full border rounded px-3 py-2"
                     rows={3}
                     placeholder="Ask questions like: Summarize stakeholders' concerns; List follow-ups for next week; Extract key metrics discussed."
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
                   />
                   <div className="flex items-center gap-2">
-                    <button
-                      className="px-3 py-2 bg-blue-600 text-white rounded disabled:opacity-50"
+                    <Button
+                      size="sm"
                       onClick={handleRunPrompt}
-                      disabled={
-                        processing ||
-                        !prompt.trim() ||
-                        (promptScope === 'meeting' && !meetingDetails?.transcript)
-                      }
+                      disabled={processing || !prompt.trim() || (promptScope === 'meeting' && !meetingDetails?.transcript)}
                     >
-                      {processing ? 'Running…' : 'Run Prompt'}
-                    </button>
-                    {promptScope === 'meeting' && !meetingDetails?.transcript && (
-                      <span className="text-sm text-gray-600">Process audio first to generate transcript.</span>
-                    )}
-                    {promptScope === 'campaign' && meetings.length === 0 && (
-                      <span className="text-sm text-gray-600">No meetings found in this campaign.</span>
-                    )}
+                      {processing ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Running…</> : 'Run Prompt'}
+                    </Button>
+                    {promptScope === 'meeting' && !meetingDetails?.transcript && <span className="text-sm text-muted-foreground">Process audio first to generate transcript.</span>}
+                    {promptScope === 'campaign' && meetings.length === 0 && <span className="text-sm text-muted-foreground">No meetings found in this campaign.</span>}
                   </div>
                   {promptResult && (
-                    <div className="text-sm text-gray-800 p-3 bg-gray-50 rounded border border-gray-200 whitespace-pre-wrap">
-                      {promptResult}
-                    </div>
+                    <pre className="text-sm p-3 bg-muted/40 rounded-md border whitespace-pre-wrap">{promptResult}</pre>
                   )}
                 </div>
-              </div>
-              {meetingDetails?.dub_url && (
-                <div className="border-t pt-4">
-                  <h4 className="font-semibold text-gray-800 mb-2">English Dub</h4>
-                  <div className="flex items-center gap-2 mb-2 text-sm text-gray-600">
-                    <span>Voice: {meetingDetails.dub_voice || 'n/a'}</span>
-                    {meetingDetails.dub_generated_at && (
-                      <span>· Generated: {new Date(meetingDetails.dub_generated_at).toLocaleString()}</span>
-                    )}
-                  </div>
-                  <audio controls src={meetingDetails.dub_url} className="w-full" />
-                  <div className="mt-2">
-                    <button
-                      className="px-3 py-2 bg-gray-100 text-gray-800 rounded"
-                      onClick={async () => {
+
+                {meetingDetails?.dub_url && (
+                  <>
+                    <Separator />
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold">English Dub</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>Voice: {meetingDetails.dub_voice || 'n/a'}</span>
+                        {meetingDetails.dub_generated_at && <span>· Generated: {new Date(meetingDetails.dub_generated_at).toLocaleString()}</span>}
+                      </div>
+                      <audio controls src={meetingDetails.dub_url} className="w-full" />
+                      <Button size="sm" variant="outline" onClick={async () => {
                         if (!selectedMeetingId) return;
                         try {
                           const { blob, filename } = await meetingsApi.downloadDub(selectedMeetingId);
@@ -705,49 +657,41 @@ const MeetingManager: React.FC<Props> = ({ fundraisingId: fundraisingIdProp }) =
                         } catch (e: any) {
                           setError(e?.message || 'Dub download failed');
                         }
-                      }}
-                    >
-                      Download Dub
-                    </button>
-                  </div>
-                </div>
-              )}
-              <div className="border-t pt-4">
-                <h4 className="font-semibold text-gray-800 mb-2">Infographic</h4>
-                <div className="grid gap-2">
-                  <input
-                    type="text"
-                    className="w-full border rounded px-3 py-2"
+                      }}>
+                        <Download className="h-4 w-4 mr-1" />Download Dub
+                      </Button>
+                    </div>
+                  </>
+                )}
+
+                <Separator />
+                <div className="space-y-3">
+                  <p className="text-sm font-semibold">Infographic</p>
+                  <Input
                     placeholder="Describe the infographic to generate (optional)"
                     value={infographicDesc}
                     onChange={(e) => setInfographicDesc(e.target.value)}
                   />
                   <div className="flex items-center gap-2">
-                    <button
-                      className="px-3 py-2 bg-teal-600 text-white rounded disabled:opacity-50"
-                      onClick={handleGenerateInfographic}
-                      disabled={infographicLoading}
-                    >
-                      {infographicLoading ? 'Generating…' : 'Generate Infographic'}
-                    </button>
+                    <Button size="sm" onClick={handleGenerateInfographic} disabled={infographicLoading}>
+                      {infographicLoading ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Generating…</> : 'Generate Infographic'}
+                    </Button>
                     {meetingDetails?.infographic_generated_at && (
-                      <span className="text-xs text-gray-600">Last generated: {new Date(meetingDetails.infographic_generated_at).toLocaleString()}</span>
+                      <span className="text-xs text-muted-foreground">Last generated: {new Date(meetingDetails.infographic_generated_at).toLocaleString()}</span>
                     )}
                   </div>
                   {meetingDetails?.infographic_url && (
-                    <div className="mt-2">
-                      <img
-                        src={meetingDetails.infographic_url}
-                        alt={meetingDetails.infographic_description || 'Meeting infographic'}
-                        className="max-h-96 border rounded"
-                      />
-                    </div>
+                    <img
+                      src={meetingDetails.infographic_url}
+                      alt={meetingDetails.infographic_description || 'Meeting infographic'}
+                      className="max-h-96 border rounded-md"
+                    />
                   )}
                 </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </CardContent>
+        </Card>
       )}
     </div>
   );

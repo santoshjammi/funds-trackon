@@ -20,14 +20,11 @@ RUN pip install --upgrade pip && pip install -r /app/requirements.txt
 # Copy application code
 COPY backend /app
 
-# Copy .env file from project root
-COPY .env /app/.env
-
 # Create uploads directory for media
 RUN mkdir -p /app/uploads/audio /app/uploads/images /app/uploads/dubs
 VOLUME ["/app/uploads"]
 
-EXPOSE 8000
+EXPOSE 8001
 
 # Environment defaults (override via docker-compose or env)
 ENV environment=production \
@@ -35,6 +32,6 @@ ENV environment=production \
     write_compat_tnifmc_fields=true \
     response_include_both_field_names=true
 
-# Start Uvicorn (allow overriding port via PORT env; default 8000)
-ENV PORT=8000
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --log-level info"]
+# Start Uvicorn (allow overriding port via PORT env; default 8001)
+ENV PORT=8001
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8001} --log-level info"]

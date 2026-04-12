@@ -20,8 +20,8 @@ mongosh --host localhost --port 27017 --file /docker-entrypoint-initdb.d/02-setu
 if [ $? -eq 0 ]; then
     echo "✅ Schema setup completed successfully"
 else
-    echo "❌ Schema setup failed"
-    exit 1
+    echo "⚠️  Schema setup failed — continuing init"
+    return 1 2>/dev/null || true
 fi
 
 # Step 2: Create indexes for optimal performance
@@ -31,8 +31,7 @@ bash /docker-entrypoint-initdb.d/01-init-indexes.sh
 if [ $? -eq 0 ]; then
     echo "✅ Index creation completed successfully"
 else
-    echo "❌ Index creation failed"
-    exit 1
+    echo "⚠️  Index creation failed — continuing init"
 fi
 
 # Step 3: Run data migration for existing data

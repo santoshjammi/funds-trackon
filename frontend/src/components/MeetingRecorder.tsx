@@ -1,7 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { Loader2, Mic, MicOff, Pause, Play, RotateCcw, Save, Upload } from 'lucide-react';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { deleteRecording, getRecording, saveRecording } from '../utils/indexedDb';
 import { getAuthToken, getTokenExpiry, isTokenExpired, meetingsApi } from '../services/api';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 
 type Props = {
   meetingId: string;
@@ -169,78 +172,82 @@ export const MeetingRecorder: React.FC<Props> = ({ meetingId, autoFilename = 'me
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         {rec.status === 'idle' && (
-          <button
+          <Button
+            size="sm"
             onClick={() => {
               if (!isAuthenticated) {
                 setMessage('Please log in to start recording.');
                 return;
               }
-              // If token already expired, allow recording but warn before upload
               if (isTokenExpired(getAuthToken())) {
                 setMessage('Session expired. You can record locally, but you must log in before uploading.');
               }
               rec.start();
             }}
-            className={`px-3 py-2 rounded ${isAuthenticated ? 'bg-green-600 text-white' : 'bg-gray-300 text-gray-600 cursor-not-allowed'}`}
             disabled={!isAuthenticated}
+            className={!isAuthenticated ? 'opacity-50 cursor-not-allowed' : ''}
           >
-            Start
-          </button>
+            <Mic className="h-4 w-4 mr-1" />Start
+          </Button>
         )}
         {rec.status === 'recording' && (
           <>
-            <button onClick={rec.pause} className="px-3 py-2 bg-yellow-600 text-white rounded">Pause</button>
-            <button onClick={rec.stop} className="px-3 py-2 bg-red-600 text-white rounded">Stop</button>
+            <Button size="sm" variant="outline" onClick={rec.pause}><Pause className="h-4 w-4 mr-1" />Pause</Button>
+            <Button size="sm" variant="destructive" onClick={rec.stop}><MicOff className="h-4 w-4 mr-1" />Stop</Button>
           </>
         )}
         {rec.status === 'paused' && (
           <>
-            <button onClick={rec.resume} className="px-3 py-2 bg-blue-600 text-white rounded">Resume</button>
-            <button onClick={rec.stop} className="px-3 py-2 bg-red-600 text-white rounded">Stop</button>
+            <Button size="sm" onClick={rec.resume}><Play className="h-4 w-4 mr-1" />Resume</Button>
+            <Button size="sm" variant="destructive" onClick={rec.stop}><MicOff className="h-4 w-4 mr-1" />Stop</Button>
           </>
         )}
         {rec.status === 'stopped' && (
           <>
-            <button onClick={rec.reset} className="px-3 py-2 bg-gray-600 text-white rounded">Reset</button>
-            <button onClick={handleSaveLocal} className="px-3 py-2 bg-indigo-600 text-white rounded">Save Locally</button>
+            <Button size="sm" variant="outline" onClick={rec.reset}><RotateCcw className="h-4 w-4 mr-1" />Reset</Button>
+            <Button size="sm" variant="secondary" onClick={handleSaveLocal}><Save className="h-4 w-4 mr-1" />Save Locally</Button>
           </>
         )}
       </div>
 
-  <div className="text-sm text-gray-700">Status: {rec.status} • Duration: {formatDuration(rec.durationMs)}{!isAuthenticated ? ' • Not authenticated' : ''}</div>
-      {rec.error && <div className="text-sm text-red-600">Error: {rec.error}</div>}
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <span>Status: <span className="font-medium text-foreground">{rec.status}</span></span>
+        <span>•</span>
+        <span>Duration: <span className="font-medium text-foreground">{formatDuration(rec.durationMs)}</span></span>
+        {!isAuthenticated && <Badge variant="destructive" className="text-xs">Not authenticated</Badge>}
+      </div>
+
+      {rec.error && <p className="text-sm text-destructive">Error: {rec.error}</p>}
 
       {rec.audioUrl && (
         <audio controls src={rec.audioUrl} className="w-full" />
       )}
 
-      {/* File info */}
-      <div className="text-xs text-gray-600 space-y-1">
+      <div className="text-xs text-muted-foreground space-y-1">
         {rec.audioBlob && (
           <div>
-            Current recording: <span className="font-medium">{autoFilename}</span>
+            Current recording: <span className="font-medium text-foreground">{autoFilename}</span>
             {` • ${rec.audioBlob.type || 'audio/webm'} • ${formatBytes(rec.audioBlob.size)}`}
           </div>
         )}
         {localMeta && (
-          <div>
-            Local saved copy: <span className="font-medium">{localMeta.filename || 'recording.webm'}</span>
-            {` • ${formatBytes(localMeta.size || 0)}`}
-            <span className="ml-2 inline-block px-2 py-0.5 text-[11px] bg-gray-100 text-gray-700 rounded">Will upload this copy</span>
+          <div className="flex items-center gap-2">
+            <span>Local saved copy: <span className="font-medium text-foreground">{localMeta.filename || 'recording.webm'}</span>{` • ${formatBytes(localMeta.size || 0)}`}</span>
+            <Badge variant="secondary" className="text-[11px]">Will upload this copy</Badge>
           </div>
         )}
       </div>
 
       <div className="flex items-center gap-2">
-        <button disabled={!canSubmit || loading} onClick={handleSubmitUpload} className="px-3 py-2 bg-primary-600 text-white rounded disabled:opacity-50">
-          {loading ? 'Uploading…' : 'Submit (Upload)'}
-        </button>
-        <button onClick={handleLoadLocal} className="px-3 py-2 bg-gray-200 rounded">Preview Local Copy</button>
+        <Button size="sm" disabled={!canSubmit || loading} onClick={handleSubmitUpload}>
+          {loading ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Uploading…</> : <><Upload className="h-4 w-4 mr-1" />Submit (Upload)</>}
+        </Button>
+        <Button size="sm" variant="outline" onClick={handleLoadLocal}>Preview Local Copy</Button>
       </div>
 
-      {message && <div className="text-sm text-gray-800">{message}</div>}
+      {message && <p className="text-sm text-foreground/80">{message}</p>}
     </div>
   );
 };

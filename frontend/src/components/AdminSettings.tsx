@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  UsersIcon, 
-  ShieldCheckIcon, 
-  CogIcon,
-  PlusIcon,
-  PencilIcon,
-  TrashIcon,
-  CheckIcon,
-  XMarkIcon
-} from '@heroicons/react/24/outline';
+  Users,
+  ShieldCheck,
+  Settings2,
+  Plus,
+  Pencil,
+  Trash2,
+  Check,
+  X
+} from 'lucide-react';
 import { rolesApi, usersApi, User } from '../services/api';
 import { 
   Role, 
@@ -19,6 +19,16 @@ import {
   PERMISSION_CATEGORIES 
 } from '../types/rbac';
 import { useAuth } from '../contexts/AuthContext';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Badge } from './ui/badge';
+import { Skeleton } from './ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from './ui/dialog';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { SelectNative } from './ui/select-native';
+import { Separator } from './ui/separator';
 import './AdminSettings.css';
 
 interface AdminSettingsProps {
@@ -283,38 +293,41 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onError, onSuccess }) => 
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="space-y-6">
+        <Skeleton className="h-9 w-48" />
+        <div className="flex gap-6"><Skeleton className="h-10 w-36" /><Skeleton className="h-10 w-36" /><Skeleton className="h-10 w-36" /></div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-40" />)}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Admin Settings</h1>
-        <p className="mt-2 text-gray-600">Manage roles, permissions, and user access.</p>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">Admin Settings</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">Manage roles, permissions, and user access.</p>
       </div>
 
       {/* Tab Navigation */}
-      <div className="border-b border-gray-200 mb-8">
-        <nav className="-mb-px flex space-x-8">
+      <div className="border-b">
+        <nav className="flex gap-1 -mb-px">
           {[
-            { key: 'roles', label: 'Roles Management', icon: ShieldCheckIcon },
-            { key: 'users', label: 'User Roles', icon: UsersIcon },
-            { key: 'permissions', label: 'Permissions', icon: CogIcon }
+            { key: 'roles', label: 'Roles Management', icon: ShieldCheck },
+            { key: 'users', label: 'User Roles', icon: Users },
+            { key: 'permissions', label: 'Permissions', icon: Settings2 }
           ].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               onClick={() => setActiveTab(key as typeof activeTab)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
+              className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
                 activeTab === key
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
               }`}
             >
-              <Icon className="h-5 w-5" />
-              <span>{label}</span>
+              <Icon className="h-4 w-4" />{label}
             </button>
           ))}
         </nav>
@@ -323,87 +336,58 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onError, onSuccess }) => 
       {/* Roles Management Tab */}
       {activeTab === 'roles' && (
         <div>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-semibold text-gray-900">Roles Management</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold">Roles Management</h2>
             {hasRole('Super Admin') && (
-              <button
-                onClick={() => setShowCreateRole(true)}
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                <PlusIcon className="h-4 w-4 mr-2" />
-                Create Role
-              </button>
+              <Button size="sm" onClick={() => setShowCreateRole(true)}>
+                <Plus className="h-4 w-4 mr-2" />Create Role
+              </Button>
             )}
           </div>
 
           {/* Roles Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {roles.map((role) => (
-              <div key={role.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div 
-                      className="role-color-indicator" 
-                      style={{ backgroundColor: role.color || '#6B7280' }}
-                    ></div>
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900">{role.name}</h3>
-                      {role.is_system_role && (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          System Role
-                        </span>
+              <Card key={role.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="pt-5">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="role-color-indicator" style={{ backgroundColor: role.color || '#6B7280' }} />
+                      <div>
+                        <h3 className="text-sm font-semibold">{role.name}</h3>
+                        {role.is_system_role && <Badge variant="info" className="mt-1 text-xs">System Role</Badge>}
+                      </div>
+                    </div>
+                    <div className="flex gap-1">
+                      {hasRole('Super Admin') && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleEditRole(role)} title={`Edit ${role.name}`}>
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {!role.is_system_role && hasRole('Super Admin') && (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDeleteRole(role.id, role.name)} title={`Delete ${role.name}`}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       )}
                     </div>
                   </div>
-                  <div className="flex space-x-2">
-                    {hasRole('Super Admin') && (
-                      <button
-                        onClick={() => handleEditRole(role)}
-                        className="text-gray-400 hover:text-gray-600"
-                        title={`Edit ${role.name} role`}
-                      >
-                        <PencilIcon className="h-4 w-4" />
-                      </button>
-                    )}
-                    {!role.is_system_role && hasRole('Super Admin') && (
-                      <button
-                        onClick={() => handleDeleteRole(role.id, role.name)}
-                        className="text-gray-400 hover:text-red-600"
-                        title={`Delete ${role.name} role`}
-                      >
-                        <TrashIcon className="h-4 w-4" />
-                      </button>
-                    )}
+                  {role.description && <p className="mt-2 text-xs text-muted-foreground">{role.description}</p>}
+                  <div className="mt-3">
+                    <p className="text-xs font-medium mb-1.5">Permissions ({role.permissions.length})</p>
+                    <div className="flex flex-wrap gap-1">
+                      {role.permissions.slice(0, 3).map((permission) => (
+                        <Badge key={permission} variant="secondary" className="text-xs">
+                          {permission.replace(/_/g, ' ').toLowerCase()}
+                        </Badge>
+                      ))}
+                      {role.permissions.length > 3 && (
+                        <Badge variant="secondary" className="text-xs">+{role.permissions.length - 3} more</Badge>
+                      )}
+                    </div>
                   </div>
-                </div>
-                
-                {role.description && (
-                  <p className="mt-2 text-sm text-gray-600">{role.description}</p>
-                )}
-                
-                <div className="mt-4">
-                  <p className="text-sm font-medium text-gray-900">Permissions ({role.permissions.length})</p>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {role.permissions.slice(0, 3).map((permission) => (
-                      <span
-                        key={permission}
-                        className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800"
-                      >
-                        {permission.replace(/_/g, ' ').toLowerCase()}
-                      </span>
-                    ))}
-                    {role.permissions.length > 3 && (
-                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-gray-100 text-gray-800">
-                        +{role.permissions.length - 3} more
-                      </span>
-                    )}
-                  </div>
-                </div>
-                
-                <div className="mt-4 text-xs text-gray-500">
-                  Created: {new Date(role.created_at).toLocaleDateString()}
-                </div>
-              </div>
+                  <p className="mt-3 text-xs text-muted-foreground">Created: {new Date(role.created_at).toLocaleDateString()}</p>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
@@ -412,62 +396,45 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onError, onSuccess }) => 
       {/* User Roles Tab */}
       {activeTab === 'users' && (
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">User Role Management</h2>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <h2 className="text-lg font-semibold mb-4">User Role Management</h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* User Selection */}
             <div>
-              <label htmlFor="user-select" className="block text-sm font-medium text-gray-700 mb-2">
-                Select User
-              </label>
-              <select
-                id="user-select"
-                value={selectedUser}
-                onChange={(e) => handleUserSelect(e.target.value)}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-              >
-                <option value="">Select a user...</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.name} ({user.email})
-                  </option>
-                ))}
-              </select>
+              <div className="space-y-1.5 mb-4">
+                <Label htmlFor="user-select">Select User</Label>
+                <SelectNative
+                  id="user-select"
+                  value={selectedUser}
+                  onChange={(e) => handleUserSelect(e.target.value)}
+                >
+                  <option value="">Select a user...</option>
+                  {users.map((user) => (
+                    <option key={user.id} value={user.id}>{user.name} ({user.email})</option>
+                  ))}
+                </SelectNative>
+              </div>
               
               {userRoles && (
-                <div className="mt-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">
-                    Current Roles for {userRoles.user_name}
-                  </h3>
-                  <div className="space-y-3">
+                <div>
+                  <h3 className="text-sm font-semibold mb-3">Current Roles for {userRoles.user_name}</h3>
+                  <div className="space-y-2">
                     {userRoles.roles.map((assignment) => (
-                      <div key={assignment.role.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md">
-                        <div className="flex items-center space-x-3">
-                          <div 
-                            className="user-role-indicator" 
-                            style={{ backgroundColor: assignment.role.color || '#6B7280' }}
-                          ></div>
+                      <div key={assignment.role.id} className="flex items-center justify-between p-3 bg-muted/40 rounded-md">
+                        <div className="flex items-center gap-3">
+                          <div className="user-role-indicator" style={{ backgroundColor: assignment.role.color || '#6B7280' }} />
                           <div>
-                            <span className="font-medium text-gray-900">{assignment.role.name}</span>
-                            {assignment.role.description && (
-                              <p className="text-sm text-gray-600">{assignment.role.description}</p>
-                            )}
+                            <span className="text-sm font-medium">{assignment.role.name}</span>
+                            {assignment.role.description && <p className="text-xs text-muted-foreground">{assignment.role.description}</p>}
                           </div>
                         </div>
                         {hasAnyRole(['Super Admin', 'Admin']) && (
-                          <button
-                            onClick={() => handleUnassignRole(selectedUser, assignment.role.id)}
-                            className="text-red-600 hover:text-red-800"
-                            title={`Remove ${assignment.role.name} role`}
-                          >
-                            <XMarkIcon className="h-4 w-4" />
-                          </button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleUnassignRole(selectedUser, assignment.role.id)} title={`Remove ${assignment.role.name}`}>
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
                         )}
                       </div>
                     ))}
-                    {userRoles.roles.length === 0 && (
-                      <p className="text-gray-500 text-center py-4">No roles assigned</p>
-                    )}
+                    {userRoles.roles.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">No roles assigned</p>}
                   </div>
                 </div>
               )}
@@ -476,32 +443,23 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onError, onSuccess }) => 
             {/* Available Roles */}
             {selectedUser && (
               <div>
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Available Roles</h3>
-                <div className="space-y-3">
+                <h3 className="text-sm font-semibold mb-3">Available Roles</h3>
+                <div className="space-y-2">
                   {roles
                     .filter(role => !userRoles?.roles.some(ur => ur.role.id === role.id))
                     .map((role) => (
-                      <div key={role.id} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md">
-                        <div className="flex items-center space-x-3">
-                          <div 
-                            className="available-role-indicator" 
-                            style={{ backgroundColor: role.color || '#6B7280' }}
-                          ></div>
+                      <div key={role.id} className="flex items-center justify-between p-3 border rounded-md">
+                        <div className="flex items-center gap-3">
+                          <div className="available-role-indicator" style={{ backgroundColor: role.color || '#6B7280' }} />
                           <div>
-                            <span className="font-medium text-gray-900">{role.name}</span>
-                            {role.description && (
-                              <p className="text-sm text-gray-600">{role.description}</p>
-                            )}
+                            <span className="text-sm font-medium">{role.name}</span>
+                            {role.description && <p className="text-xs text-muted-foreground">{role.description}</p>}
                           </div>
                         </div>
                         {hasAnyRole(['Super Admin', 'Admin']) && (
-                          <button
-                            onClick={() => handleAssignRole(selectedUser, role.id)}
-                            className="text-green-600 hover:text-green-800"
-                            title={`Assign ${role.name} role`}
-                          >
-                            <PlusIcon className="h-4 w-4" />
-                          </button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-green-600 hover:text-green-700" onClick={() => handleAssignRole(selectedUser, role.id)} title={`Assign ${role.name}`}>
+                            <Plus className="h-3.5 w-3.5" />
+                          </Button>
                         )}
                       </div>
                     ))}
@@ -515,19 +473,20 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onError, onSuccess }) => 
       {/* Permissions Tab */}
       {activeTab === 'permissions' && (
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-6">System Permissions</h2>
-          
+          <h2 className="text-lg font-semibold mb-4">System Permissions</h2>
           {Object.entries(groupPermissionsByCategory(permissions)).map(([category, categoryPermissions]) => (
-            <div key={category} className="mb-8">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">{category}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div key={category} className="mb-6">
+              <h3 className="text-sm font-semibold mb-3">{category}</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {categoryPermissions.map((permission) => (
-                  <div key={permission.name} className="bg-white p-4 rounded-lg border border-gray-200">
-                    <h4 className="font-medium text-gray-900">
-                      {permission.name.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
-                    </h4>
-                    <p className="text-sm text-gray-600 mt-1">{permission.description}</p>
-                  </div>
+                  <Card key={permission.name}>
+                    <CardContent className="pt-4 pb-4">
+                      <h4 className="text-sm font-medium">
+                        {permission.name.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                      </h4>
+                      <p className="text-xs text-muted-foreground mt-1">{permission.description}</p>
+                    </CardContent>
+                  </Card>
                 ))}
               </div>
             </div>
@@ -535,122 +494,97 @@ const AdminSettings: React.FC<AdminSettingsProps> = ({ onError, onSuccess }) => 
         </div>
       )}
 
-      {/* Create/Edit Role Modal */}
-      {showCreateRole && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-medium text-gray-900">
-                {editingRole ? 'Edit Role' : 'Create New Role'}
-              </h3>
-            </div>
-            
-            <div className="px-6 py-4 space-y-6">
-              {/* Basic Info */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="role-name" className="block text-sm font-medium text-gray-700">
-                    Role Name *
-                  </label>
-                  <input
-                    type="text"
-                    id="role-name"
-                    value={roleForm.name}
-                    onChange={(e) => setRoleForm(prev => ({ ...prev, name: e.target.value }))}
-                    className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    placeholder="Enter role name"
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="role-color" className="block text-sm font-medium text-gray-700">
-                    Role Color
-                  </label>
-                  <div className="mt-1 flex items-center space-x-2">
-                    <div 
-                      className="role-color-picker" 
-                      style={{ backgroundColor: roleForm.color }}
-                    ></div>
-                    <select
-                      id="role-color"
-                      value={roleForm.color}
-                      onChange={(e) => setRoleForm(prev => ({ ...prev, color: e.target.value }))}
-                      className="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                    >
-                      {ROLE_COLORS.map((color) => (
-                        <option key={color} value={color}>{color}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-              </div>
-              
-              <div>
-                <label htmlFor="role-description" className="block text-sm font-medium text-gray-700">
-                  Description
-                </label>
-                <textarea
-                  id="role-description"
-                  rows={3}
-                  value={roleForm.description}
-                  onChange={(e) => setRoleForm(prev => ({ ...prev, description: e.target.value }))}
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                  placeholder="Enter role description"
+      {/* Create/Edit Role Dialog */}
+      <Dialog open={showCreateRole} onOpenChange={(open) => {
+        if (!open) {
+          setShowCreateRole(false);
+          setEditingRole(null);
+          setRoleForm({ name: '', description: '', permissions: [], color: ROLE_COLORS[0] });
+        }
+      }}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingRole ? 'Edit Role' : 'Create New Role'}</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-5 py-2">
+            {/* Basic Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="role-name">Role Name *</Label>
+                <Input
+                  id="role-name"
+                  value={roleForm.name}
+                  onChange={(e) => setRoleForm(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="Enter role name"
                 />
               </div>
-              
-              {/* Permissions */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-900 mb-4">Permissions</h4>
-                {Object.entries(groupPermissionsByCategory(permissions)).map(([category, categoryPermissions]) => (
-                  <div key={category} className="mb-6">
-                    <h5 className="text-sm font-medium text-gray-700 mb-2">{category}</h5>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                      {categoryPermissions.map((permission) => (
-                        <label key={permission.name} className="flex items-center space-x-2">
-                          <input
-                            type="checkbox"
-                            checked={roleForm.permissions.includes(permission.name)}
-                            onChange={() => togglePermission(permission.name)}
-                            className="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                          />
-                          <span className="text-sm text-gray-700">
-                            {permission.name.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
-                          </span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+              <div className="space-y-1.5">
+                <Label htmlFor="role-color">Role Color</Label>
+                <div className="flex items-center gap-2">
+                  <div className="role-color-picker" style={{ backgroundColor: roleForm.color }} />
+                  <SelectNative
+                    id="role-color"
+                    value={roleForm.color}
+                    onChange={(e) => setRoleForm(prev => ({ ...prev, color: e.target.value }))}
+                  >
+                    {ROLE_COLORS.map((color) => (
+                      <option key={color} value={color}>{color}</option>
+                    ))}
+                  </SelectNative>
+                </div>
               </div>
             </div>
             
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
-              <button
-                onClick={() => {
-                  setShowCreateRole(false);
-                  setEditingRole(null);
-                  setRoleForm({
-                    name: '',
-                    description: '',
-                    permissions: [],
-                    color: ROLE_COLORS[0]
-                  });
-                }}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={editingRole ? handleUpdateRole : handleCreateRole}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-              >
-                {editingRole ? 'Update Role' : 'Create Role'}
-              </button>
+            <div className="space-y-1.5">
+              <Label htmlFor="role-description">Description</Label>
+              <Textarea
+                id="role-description"
+                rows={3}
+                value={roleForm.description}
+                onChange={(e) => setRoleForm(prev => ({ ...prev, description: e.target.value }))}
+                placeholder="Enter role description"
+              />
+            </div>
+            
+            {/* Permissions */}
+            <div>
+              <h4 className="text-sm font-semibold mb-3">Permissions</h4>
+              {Object.entries(groupPermissionsByCategory(permissions)).map(([category, categoryPermissions]) => (
+                <div key={category} className="mb-4">
+                  <h5 className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">{category}</h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {categoryPermissions.map((permission) => (
+                      <label key={permission.name} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={roleForm.permissions.includes(permission.name)}
+                          onChange={() => togglePermission(permission.name)}
+                          className="rounded border-input text-primary"
+                        />
+                        <span className="text-sm">
+                          {permission.name.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, l => l.toUpperCase())}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
-      )}
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setShowCreateRole(false);
+              setEditingRole(null);
+              setRoleForm({ name: '', description: '', permissions: [], color: ROLE_COLORS[0] });
+            }}>Cancel</Button>
+            <Button onClick={editingRole ? handleUpdateRole : handleCreateRole}>
+              {editingRole ? 'Update Role' : 'Create Role'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

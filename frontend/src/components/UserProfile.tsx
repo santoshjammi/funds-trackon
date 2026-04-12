@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { usersApi, User } from '../services/api';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Separator } from './ui/separator';
 
 interface UserProfileProps {
   user: User;
@@ -81,160 +87,113 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onUserUpdate, onError }
   };
 
   return (
-    <div className="bg-white shadow rounded-lg p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-medium text-gray-900">User Profile</h3>
-        <div className="flex items-center space-x-2">
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            user.is_active 
-              ? 'bg-green-100 text-green-800' 
-              : 'bg-red-100 text-red-800'
-          }`}>
-            {user.is_active ? 'Active' : 'Inactive'}
-          </span>
-          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-            hasPassword 
-              ? 'bg-blue-100 text-blue-800' 
-              : 'bg-yellow-100 text-yellow-800'
-          }`}>
-            {hasPassword ? 'Password Set' : 'No Password'}
-          </span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Name</label>
-          <p className="mt-1 text-sm text-gray-900">{user.name}</p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Email</label>
-          <p className="mt-1 text-sm text-gray-900">{user.email}</p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Username</label>
-          <p className="mt-1 text-sm text-gray-900">{user.username || 'Not set'}</p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Designation</label>
-          <p className="mt-1 text-sm text-gray-900">{user.designation}</p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Employment Type</label>
-          <p className="mt-1 text-sm text-gray-900">{user.employment_type}</p>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700">Roles</label>
-          <p className="mt-1 text-sm text-gray-900">
-            {user.roles?.join(', ') || 'No roles assigned'}
-          </p>
-        </div>
-
-        {user.phone && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Phone</label>
-            <p className="mt-1 text-sm text-gray-900">{user.phone}</p>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">User Profile</CardTitle>
+          <div className="flex items-center gap-2">
+            <Badge variant={user.is_active ? 'success' : 'destructive'}>
+              {user.is_active ? 'Active' : 'Inactive'}
+            </Badge>
+            <Badge variant={hasPassword ? 'default' : 'warning'}>
+              {hasPassword ? 'Password Set' : 'No Password'}
+            </Badge>
           </div>
-        )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {[
+            { label: 'Name', value: user.name },
+            { label: 'Email', value: user.email },
+            { label: 'Username', value: user.username || 'Not set' },
+            { label: 'Designation', value: user.designation },
+            { label: 'Employment Type', value: user.employment_type },
+            { label: 'Roles', value: user.roles?.join(', ') || 'No roles assigned' },
+            ...(user.phone ? [{ label: 'Phone', value: user.phone }] : []),
+            ...(user.last_login ? [{ label: 'Last Login', value: new Date(user.last_login).toLocaleDateString() }] : []),
+          ].map(({ label, value }) => (
+            <div key={label}>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+              <p className="mt-0.5 text-sm">{value}</p>
+            </div>
+          ))}
+        </div>
 
-        {user.last_login && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Last Login</label>
-            <p className="mt-1 text-sm text-gray-900">
-              {new Date(user.last_login).toLocaleDateString()}
-            </p>
-          </div>
-        )}
-      </div>
+        <Separator />
 
-      {/* Password Management Section */}
-      <div className="mt-8 pt-6 border-t border-gray-200">
-        <div className="flex items-center justify-between mb-4">
-          <h4 className="text-md font-medium text-gray-900">Password Management</h4>
-          <button
+        {/* Password Management */}
+        <div className="flex items-center justify-between">
+          <h4 className="text-sm font-semibold">Password Management</h4>
+          <Button
+            variant="outline"
+            size="sm"
             onClick={() => setShowPasswordForm(!showPasswordForm)}
-            className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
           >
             {hasPassword ? 'Change Password' : 'Set Password'}
-          </button>
+          </Button>
         </div>
 
         {showPasswordForm && (
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
             {hasPassword && (
-              <div>
-                <label htmlFor="currentPassword" className="block text-sm font-medium text-gray-700">
-                  Current Password
-                </label>
-                <input
+              <div className="space-y-1.5">
+                <Label htmlFor="currentPassword">Current Password</Label>
+                <Input
                   id="currentPassword"
                   type="password"
                   required
-                  className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                   value={passwordForm.currentPassword}
                   onChange={(e) => handleInputChange('currentPassword', e.target.value)}
                 />
               </div>
             )}
 
-            <div>
-              <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
-                New Password
-              </label>
-              <input
+            <div className="space-y-1.5">
+              <Label htmlFor="newPassword">New Password</Label>
+              <Input
                 id="newPassword"
                 type="password"
                 required
                 minLength={6}
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 value={passwordForm.newPassword}
                 onChange={(e) => handleInputChange('newPassword', e.target.value)}
               />
             </div>
 
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirm New Password
-              </label>
-              <input
+            <div className="space-y-1.5">
+              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+              <Input
                 id="confirmPassword"
                 type="password"
                 required
-                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 value={passwordForm.confirmPassword}
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
               />
             </div>
 
-            <div className="flex justify-end space-x-3">
-              <button
+            <div className="flex justify-end gap-3">
+              <Button
                 type="button"
+                variant="outline"
                 onClick={() => {
                   setShowPasswordForm(false);
                   setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
                 }}
-                className="px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
               >
                 Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-              >
+              </Button>
+              <Button type="submit" disabled={loading}>
                 {loading ? 'Updating...' : hasPassword ? 'Change Password' : 'Set Password'}
-              </button>
+              </Button>
             </div>
           </form>
         )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
+
+
 };
 
 export default UserProfile;

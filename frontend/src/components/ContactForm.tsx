@@ -1,6 +1,10 @@
 import React from 'react';
 import { Contact } from '../services/api';
 import OrganizationSelect from './OrganizationSelect';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { SelectNative } from './ui/select-native';
 
 interface Organization {
   id?: string;
@@ -44,26 +48,20 @@ const ContactForm: React.FC<ContactFormProps> = ({ contact, onChange, organizati
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
+          <h3 className="text-base font-semibold mb-4">Basic Information</h3>
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Name *
-              </label>
-              <input
-                type="text"
+            <div className="space-y-1.5">
+              <Label htmlFor="name">Name <span className="text-destructive">*</span></Label>
+              <Input
+                id="name"
                 value={currentContact.name || ''}
                 onChange={(e) => handleChange('name', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter contact name"
                 required
               />
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Organization *
-              </label>
+            <div className="space-y-1.5">
+              <Label>Organization <span className="text-destructive">*</span></Label>
               <OrganizationSelect
                 organizations={organizations}
                 value={currentContact.organisation || ''}
@@ -71,29 +69,21 @@ const ContactForm: React.FC<ContactFormProps> = ({ contact, onChange, organizati
                 placeholder="Select or enter organization name"
               />
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Designation
-              </label>
-              <input
-                type="text"
+            <div className="space-y-1.5">
+              <Label htmlFor="designation">Designation</Label>
+              <Input
+                id="designation"
                 value={currentContact.designation || ''}
                 onChange={(e) => handleChange('designation', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter designation"
               />
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Branch/Department
-              </label>
-              <input
-                type="text"
+            <div className="space-y-1.5">
+              <Label htmlFor="branch">Branch / Department</Label>
+              <Input
+                id="branch"
                 value={currentContact.branch_department || ''}
                 onChange={(e) => handleChange('branch_department', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter branch or department"
               />
             </div>
@@ -101,43 +91,35 @@ const ContactForm: React.FC<ContactFormProps> = ({ contact, onChange, organizati
         </div>
 
         <div>
-          <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
+          <h3 className="text-base font-semibold mb-4">Contact Information</h3>
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Email
-              </label>
-              <input
+            <div className="space-y-1.5">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
                 type="email"
                 value={currentContact.email || ''}
                 onChange={(e) => handleChange('email', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter email address"
               />
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Phone
-              </label>
-              <input
+            <div className="space-y-1.5">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
                 type="tel"
                 value={currentContact.phone || ''}
                 onChange={(e) => handleChange('phone', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter phone number"
               />
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Mobile
-              </label>
-              <input
+            <div className="space-y-1.5">
+              <Label htmlFor="mobile">Mobile</Label>
+              <Input
+                id="mobile"
                 type="tel"
                 value={currentContact.mobile || ''}
                 onChange={(e) => handleChange('mobile', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter mobile number"
               />
             </div>
@@ -147,43 +129,32 @@ const ContactForm: React.FC<ContactFormProps> = ({ contact, onChange, organizati
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div>
-          <h3 className="text-lg font-semibold mb-4">Location Information</h3>
+          <h3 className="text-base font-semibold mb-4">Location Information</h3>
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Geography/Region
-              </label>
-              <input
-                type="text"
+            <div className="space-y-1.5">
+              <Label htmlFor="geo">Geography / Region</Label>
+              <Input
+                id="geo"
                 value={currentContact.geography_region || ''}
                 onChange={(e) => handleChange('geography_region', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter geography or region"
               />
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Country/Location
-              </label>
-              <input
-                type="text"
+            <div className="space-y-1.5">
+              <Label htmlFor="country">Country / Location</Label>
+              <Input
+                id="country"
                 value={currentContact.country_location || ''}
                 onChange={(e) => handleChange('country_location', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter country or location"
               />
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Sub-location
-              </label>
-              <input
-                type="text"
+            <div className="space-y-1.5">
+              <Label htmlFor="subloc">Sub-location</Label>
+              <Input
+                id="subloc"
                 value={currentContact.sub_location || ''}
                 onChange={(e) => handleChange('sub_location', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter sub-location"
               />
             </div>
@@ -191,30 +162,25 @@ const ContactForm: React.FC<ContactFormProps> = ({ contact, onChange, organizati
         </div>
 
         <div>
-          <h3 className="text-lg font-semibold mb-4">Additional Information</h3>
+          <h3 className="text-base font-semibold mb-4">Additional Information</h3>
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Address
-              </label>
-              <textarea
+            <div className="space-y-1.5">
+              <Label htmlFor="address">Address</Label>
+              <Textarea
+                id="address"
                 value={currentContact.address || ''}
                 onChange={(e) => handleChange('address', e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter address"
               />
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Notes/Comments
-              </label>
-              <textarea
+            <div className="space-y-1.5">
+              <Label htmlFor="notes">Notes / Comments</Label>
+              <Textarea
+                id="notes"
                 value={currentContact.notes_comments || ''}
                 onChange={(e) => handleChange('notes_comments', e.target.value)}
                 rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="Enter notes or comments"
               />
             </div>

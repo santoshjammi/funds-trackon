@@ -5,6 +5,8 @@ WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json* frontend/pnpm-lock.yaml* frontend/yarn.lock* ./
 RUN npm ci || npm install
 COPY frontend .
+ARG REACT_APP_API_BASE_URL
+ENV REACT_APP_API_BASE_URL=${REACT_APP_API_BASE_URL}
 RUN npm run build
 
 FROM nginx:1.27-alpine AS prod

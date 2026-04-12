@@ -1,5 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { Task, User, Contact, Opportunity, Fundraising, contactsApi, usersApi, opportunitiesApi, fundraisingApi } from '../services/api';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Textarea } from './ui/textarea';
+import { SelectNative } from './ui/select-native';
 
 interface TaskFormProps {
   task: Task | null;
@@ -195,246 +199,126 @@ const TaskForm: React.FC<TaskFormProps> = ({ task, onChange }) => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Title *
-              </label>
-              <input
-                type="text"
-                value={currentTask.title || ''}
-                onChange={(e) => handleChange('title', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Enter task title"
-                required
-              />
-            </div>
-
-            <div>
-              <label htmlFor="task-type-select" className="block text-sm font-medium text-gray-700 mb-1">
-                Task Type
-              </label>
-              <select
-                id="task-type-select"
-                value={currentTask.task_type || ''}
-                onChange={(e) => handleChange('task_type', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select task type</option>
-                <option value="call">Call</option>
-                <option value="email">Email</option>
-                <option value="meeting">Meeting</option>
-                <option value="follow_up">Follow Up</option>
-                <option value="research">Research</option>
-                <option value="presentation">Presentation</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="task-status-select" className="block text-sm font-medium text-gray-700 mb-1">
-                Status
-              </label>
-              <select
-                id="task-status-select"
-                value={currentTask.status || ''}
-                onChange={(e) => handleChange('status', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select status</option>
-                <option value="To Do">To Do</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Completed">Completed</option>
-                <option value="Cancelled">Cancelled</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="task-priority-select" className="block text-sm font-medium text-gray-700 mb-1">
-                Priority
-              </label>
-              <select
-                id="task-priority-select"
-                value={currentTask.priority || ''}
-                onChange={(e) => handleChange('priority', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Select priority</option>
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-                <option value="Urgent">Urgent</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-lg font-semibold mb-4">Assignment & Timeline</h3>
-          <div className="space-y-4">
-            <div className="relative">
-              <label htmlFor="assignee-input" className="block text-sm font-medium text-gray-700 mb-1">
-                Assignee *
-              </label>
-              <input
-                ref={assigneeInputRef}
-                id="assignee-input"
-                type="text"
-                value={assigneeSearch || getAssigneeDisplay()}
-                onChange={handleAssigneeInputChange}
-                onFocus={() => setShowAssigneeDropdown(true)}
-                onBlur={() => setTimeout(() => setShowAssigneeDropdown(false), 200)}
-                onKeyDown={handleAssigneeKeyDown}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Search and select assignee..."
-                title="Search for team members or contacts"
-                autoComplete="off"
-              />
-              {showAssigneeDropdown && filteredAssignees.length > 0 && (
-                <div className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto mt-1">
-                  {filteredAssignees.map((assignee, index) => (
-                    <div
-                      key={assignee.value}
-                      onClick={() => handleAssigneeSelect(assignee)}
-                      className={`px-3 py-2 cursor-pointer hover:bg-blue-50 ${
-                        index === selectedAssigneeIndex ? 'bg-blue-100' : ''
-                      }`}
-                    >
-                      {assignee.display}
-                    </div>
-                  ))}
-                </div>
-              )}
-              <p className="text-xs text-gray-500 mt-1">
-                Search for team members or contacts to assign this task
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Due Date
-              </label>
-              <input
-                type="date"
-                value={currentTask.due_date || ''}
-                onChange={(e) => handleChange('due_date', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Select Due date"
-                title="Due Date"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Completed Date
-              </label>
-              <input
-                type="date"
-                value={currentTask.completed_date || ''}
-                onChange={(e) => handleChange('completed_date', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Select completed date"
-                title="Completed Date"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-          <h3 className="text-lg font-semibold mb-4">Related Records</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Related Opportunity
-              </label>
-              <select
-                value={currentTask.opportunity_id || ''}
-                onChange={(e) => handleChange('opportunity_id', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                title="Select related opportunity"
-              >
-                <option value="">Select opportunity</option>
-                {opportunities.map(opportunity => (
-                  <option key={opportunity.id} value={opportunity.id}>
-                    {opportunity.title} - {opportunity.organisation}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Related Fundraising
-              </label>
-              <select
-                value={currentTask.fundraising_id || ''}
-                onChange={(e) => handleChange('fundraising_id', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                title="Select related fundraising campaign"
-              >
-                <option value="">Select fundraising campaign</option>
-                {fundraising.map(fund => (
-                  <option key={fund.id} value={fund.id}>
-                    {fund.organisation} - {fund.investor_type || 'Investor'}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <h3 className="text-lg font-semibold mb-4">Additional Information</h3>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Tags
-              </label>
-              <input
-                type="text"
-                value={currentTask.tags?.join(', ') || ''}
-                onChange={(e) => handleChange('tags', e.target.value.split(',').map(tag => tag.trim()))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Comma-separated tags"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Description
-        </label>
-        <textarea
-          value={currentTask.description || ''}
-          onChange={(e) => handleChange('description', e.target.value)}
-          rows={4}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Enter task description"
+    <div className="space-y-4">
+      <div className="space-y-1.5">
+        <Label htmlFor="task-title">Task Title *</Label>
+        <Input
+          id="task-title"
+          value={currentTask.title || ''}
+          onChange={(e) => handleChange('title', e.target.value)}
+          placeholder="Enter task title"
+          required
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          Notes
-        </label>
-        <textarea
-          value={currentTask.notes || ''}
-          onChange={(e) => handleChange('notes', e.target.value)}
-          rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Additional notes"
-        />
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="task-type">Task Type</Label>
+          <SelectNative id="task-type" value={currentTask.task_type || 'other'} onChange={(e) => handleChange('task_type', e.target.value)}>
+            <option value="call">Call</option>
+            <option value="meeting">Meeting</option>
+            <option value="email">Email</option>
+            <option value="follow_up">Follow Up</option>
+            <option value="demo">Demo</option>
+            <option value="proposal">Proposal</option>
+            <option value="contract">Contract</option>
+            <option value="other">Other</option>
+          </SelectNative>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="task-status">Status</Label>
+          <SelectNative id="task-status" value={currentTask.status || 'pending'} onChange={(e) => handleChange('status', e.target.value)}>
+            <option value="pending">Pending</option>
+            <option value="in_progress">In Progress</option>
+            <option value="completed">Completed</option>
+            <option value="cancelled">Cancelled</option>
+          </SelectNative>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label htmlFor="task-priority">Priority</Label>
+          <SelectNative id="task-priority" value={currentTask.priority || 'medium'} onChange={(e) => handleChange('priority', e.target.value)}>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </SelectNative>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="task-due-date">Due Date</Label>
+          <Input
+            id="task-due-date"
+            type="datetime-local"
+            value={currentTask.due_date ? new Date(currentTask.due_date).toISOString().slice(0, 16) : ''}
+            onChange={(e) => handleChange('due_date', e.target.value ? new Date(e.target.value).toISOString() : '')}
+          />
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="task-assignee">Assign To</Label>
+        <div className="relative">
+          <Input
+            id="task-assignee"
+            ref={assigneeInputRef}
+            value={assigneeSearch}
+            onChange={handleAssigneeInputChange}
+            onFocus={() => setShowAssigneeDropdown(true)}
+            onBlur={() => setTimeout(() => setShowAssigneeDropdown(false), 200)}
+            onKeyDown={handleAssigneeKeyDown}
+            placeholder="Search users or contacts..."
+            autoComplete="off"
+          />
+          {showAssigneeDropdown && filteredAssignees.length > 0 && (
+            <div className="absolute z-50 w-full mt-1 max-h-48 overflow-y-auto rounded-md border bg-popover shadow-md">
+              {filteredAssignees.slice(0, 20).map((assignee, index) => (
+                <button
+                  key={assignee.value}
+                  type="button"
+                  className={`w-full text-left px-3 py-2 text-sm flex items-center gap-2 hover:bg-accent ${index === selectedAssigneeIndex ? 'bg-accent' : ''}`}
+                  onMouseDown={() => handleAssigneeSelect(assignee)}
+                >
+                  <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${assignee.type === 'user' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}`}>
+                    {assignee.type === 'user' ? 'User' : 'Contact'}
+                  </span>
+                  <span>{assignee.data.name}</span>
+                  <span className="text-muted-foreground text-xs">{assignee.type === 'user' ? assignee.data.email : assignee.data.organisation}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="task-opportunity">Related Opportunity</Label>
+        <SelectNative id="task-opportunity" value={currentTask.opportunity_id || ''} onChange={(e) => handleChange('opportunity_id', e.target.value)}>
+          <option value="">None</option>
+          {opportunities.map(o => <option key={o.id} value={o.id}>{o.title || o.organisation || o.id}</option>)}
+        </SelectNative>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="task-fundraising">Related Fundraising Campaign</Label>
+        <SelectNative id="task-fundraising" value={currentTask.fundraising_id || ''} onChange={(e) => handleChange('fundraising_id', e.target.value)}>
+          <option value="">None</option>
+          {fundraising.map(f => <option key={f.id} value={f.id}>{f.reference || f.organisation || f.id}</option>)}
+        </SelectNative>
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="task-description">Description</Label>
+        <Textarea id="task-description" value={currentTask.description || ''} onChange={(e) => handleChange('description', e.target.value)} rows={3} placeholder="Describe the task..." />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="task-notes">Notes</Label>
+        <Textarea id="task-notes" value={currentTask.notes || ''} onChange={(e) => handleChange('notes', e.target.value)} rows={2} placeholder="Additional notes..." />
       </div>
     </div>
   );
 };
 
-export default React.memo(TaskForm);
+export default TaskForm;
+

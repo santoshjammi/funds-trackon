@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { User, Contact } from '../services/api';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 
 interface UserSearchProps {
   users: User[];
@@ -154,49 +156,39 @@ const UserSearch: React.FC<UserSearchProps> = ({
 
   return (
     <div className={`relative ${className}`}>
-      {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-1">
-          {label}
-        </label>
-      )}
+      {label && <Label className="mb-1.5">{label}</Label>}
       <div className="relative">
-        <input
+        <Input
           type="text"
           value={searchTerm}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
           onFocus={() => setShowDropdown(true)}
-          onBlur={() => {
-            // Delay hiding dropdown to allow for option selection
-            setTimeout(() => setShowDropdown(false), 200);
-          }}
+          onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
           placeholder={placeholder}
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         {showDropdown && loading && assigneeData.allOptions.length === 0 && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-3">
-            <span className="text-sm text-gray-500">Loading...</span>
+          <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
+            <span className="text-sm text-muted-foreground">Loading...</span>
           </div>
         )}
         {showDropdown && !loading && filteredOptions.length > 0 && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+          <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto">
             {filteredOptions.map((option, index) => (
               <div
                 key={`${option.type}-${option.id}`}
                 onClick={() => handleOptionSelect(option)}
-                className={`px-3 py-2 cursor-pointer hover:bg-gray-100 ${
-                  index === selectedIndex ? 'bg-blue-50' : ''
+                className={`px-3 py-2 cursor-pointer hover:bg-accent ${
+                  index === selectedIndex ? 'bg-accent' : ''
                 }`}
               >
-                <div className="flex items-center">
-                  <span className={`inline-block w-2 h-2 rounded-full mr-2 ${
+                <div className="flex items-center gap-2">
+                  <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 ${
                     option.type === 'user' ? 'bg-blue-500' : 'bg-green-500'
-                  }`}></span>
+                  }`} />
                   <span className="text-sm">
                     {option.display}
-                    <span className="text-xs text-gray-500 ml-1">
-                      ({option.type})
-                    </span>
+                    <span className="text-xs text-muted-foreground ml-1">({option.type})</span>
                   </span>
                 </div>
               </div>
@@ -204,8 +196,8 @@ const UserSearch: React.FC<UserSearchProps> = ({
           </div>
         )}
         {showDropdown && !loading && filteredOptions.length === 0 && searchTerm.trim() && (
-          <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg p-3">
-            <span className="text-sm text-gray-500">No matches found</span>
+          <div className="absolute z-10 w-full mt-1 bg-popover border rounded-md shadow-lg p-3">
+            <span className="text-sm text-muted-foreground">No matches found</span>
           </div>
         )}
       </div>

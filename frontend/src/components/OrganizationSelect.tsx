@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { Input } from './ui/input';
 
 interface Organization {
   id?: string;
@@ -107,7 +108,7 @@ const OrganizationSelect: React.FC<OrganizationSelectProps> = ({
 
   return (
     <div className={`relative ${className}`}>
-      <input
+      <Input
         ref={inputRef}
         type="text"
         value={inputValue}
@@ -116,20 +117,19 @@ const OrganizationSelect: React.FC<OrganizationSelectProps> = ({
         onBlur={handleInputBlur}
         onKeyDown={handleKeyDown}
         placeholder={placeholder}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         autoComplete="off"
       />
       {showDropdown && (
         <ul
           ref={listRef}
-          className="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto mt-1"
+          className="absolute z-10 w-full bg-popover border rounded-md shadow-lg max-h-60 overflow-y-auto mt-1"
         >
           {filteredOrganizations.map((org, index) => (
             <li
               key={org.id || `org-${index}`}
               onClick={() => handleOptionClick(org)}
-              className={`px-3 py-2 cursor-pointer hover:bg-blue-50 ${
-                index === selectedIndex ? 'bg-blue-100' : ''
+              className={`px-3 py-2 cursor-pointer text-sm hover:bg-accent ${
+                index === selectedIndex ? 'bg-accent' : ''
               }`}
             >
               {org.name}

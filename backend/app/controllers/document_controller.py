@@ -6,7 +6,7 @@ Following SOLID principles with dependency injection
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File
 from pydantic import BaseModel
-from app.models.document import Document, DocumentType, DocumentCategory, DocumentStatus
+from app.models.document import DocumentMetadata as Document, DocumentType, DocumentCategory, DocumentStatus
 from app.services.document_service import DocumentService
 
 document_router = APIRouter()

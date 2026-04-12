@@ -1,17 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import {
-  PlusIcon,
-  PencilIcon,
-  TrashIcon,
-  MagnifyingGlassIcon,
-  ArrowUpIcon,
-  ArrowDownIcon,
-  BuildingOfficeIcon,
-  PhoneIcon,
-  EnvelopeIcon,
-  MapPinIcon
-} from '@heroicons/react/24/outline';
+  Plus,
+  Pencil,
+  Search,
+  ArrowUp,
+  ArrowDown,
+  Building2,
+  Phone,
+  Mail,
+  Users,
+} from 'lucide-react';
 import { contactsApi, Contact } from '../services/api';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Alert, AlertDescription } from './ui/alert';
+import { Skeleton } from './ui/skeleton';
+import { AlertCircle } from 'lucide-react';
 
 interface ContactListProps {
   onSelectContact: (contact: Contact) => void;
@@ -74,15 +79,24 @@ const ContactList: React.FC<ContactListProps> = ({ onSelectContact, onCreateNew 
 
   const getSortIcon = (field: keyof Contact) => {
     if (sortField !== field) return null;
-    return sortDirection === 'asc' ?
-      <ArrowUpIcon className="w-4 h-4 inline ml-1" /> :
-      <ArrowDownIcon className="w-4 h-4 inline ml-1" />;
+    return sortDirection === 'asc'
+      ? <ArrowUp className="w-3 h-3 inline ml-1" />
+      : <ArrowDown className="w-3 h-3 inline ml-1" />;
   };
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-9 w-32" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+        <Skeleton className="h-10 w-full" />
+        <div className="space-y-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full" />
+          ))}
+        </div>
       </div>
     );
   }
@@ -91,158 +105,130 @@ const ContactList: React.FC<ContactListProps> = ({ onSelectContact, onCreateNew 
     <div className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Contacts</h1>
-        <button
-          onClick={onCreateNew}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          <PlusIcon className="w-5 h-5 mr-2" />
+        <h1 className="text-2xl font-semibold tracking-tight">Contacts</h1>
+        <Button onClick={onCreateNew} size="sm">
+          <Plus className="w-4 h-4 mr-2" />
           Add Contact
-        </button>
+        </Button>
       </div>
 
       {/* Search */}
-      <div className="flex items-center space-x-4">
-        <div className="flex-1 relative">
-          <MagnifyingGlassIcon className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search contacts..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+      <div className="relative max-w-sm">
+        <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="Search contacts..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9"
+        />
       </div>
 
-      {/* Error Message */}
+      {/* Error */}
       {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      {/* Contacts Table */}
-      <div className="bg-white shadow overflow-hidden sm:rounded-md">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('name')}
-                >
-                  Name {getSortIcon('name')}
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('organisation')}
-                >
-                  Organization {getSortIcon('organisation')}
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
-                  onClick={() => handleSort('designation')}
-                >
-                  Designation {getSortIcon('designation')}
-                </th>
-                <th
-                  scope="col"
-                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Contact Info
-                </th>
-                <th scope="col" className="relative px-6 py-3">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredAndSortedContacts.map((contact) => (
-                <tr key={contact.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => onSelectContact(contact)}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm font-medium text-gray-900">{contact.name}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      <BuildingOfficeIcon className="w-4 h-4 text-gray-400 mr-2" />
-                      <div className="text-sm text-gray-900">{contact.organisation}</div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{contact.designation || '-'}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="space-y-1">
-                      {contact.email && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <EnvelopeIcon className="w-4 h-4 mr-1" />
-                          {contact.email}
-                        </div>
-                      )}
-                      {contact.phone && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <PhoneIcon className="w-4 h-4 mr-1" />
-                          {contact.phone}
-                        </div>
-                      )}
-                      {contact.mobile && (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <PhoneIcon className="w-4 h-4 mr-1" />
-                          {contact.mobile}
-                        </div>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectContact(contact);
-                      }}
-                      className="text-blue-600 hover:text-blue-900 mr-3"
-                      title="Edit contact"
-                    >
-                      <PencilIcon className="w-5 h-5" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Table */}
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead
+                className="cursor-pointer select-none"
+                onClick={() => handleSort('name')}
+              >
+                Name {getSortIcon('name')}
+              </TableHead>
+              <TableHead
+                className="cursor-pointer select-none"
+                onClick={() => handleSort('organisation')}
+              >
+                Organization {getSortIcon('organisation')}
+              </TableHead>
+              <TableHead
+                className="cursor-pointer select-none"
+                onClick={() => handleSort('designation')}
+              >
+                Designation {getSortIcon('designation')}
+              </TableHead>
+              <TableHead>Contact Info</TableHead>
+              <TableHead className="w-16" />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredAndSortedContacts.map((contact) => (
+              <TableRow
+                key={contact.id}
+                className="cursor-pointer"
+                onClick={() => onSelectContact(contact)}
+              >
+                <TableCell className="font-medium">{contact.name}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1.5">
+                    <Building2 className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <span>{contact.organisation}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {contact.designation || '—'}
+                </TableCell>
+                <TableCell>
+                  <div className="space-y-1">
+                    {contact.email && (
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Mail className="w-3.5 h-3.5" />
+                        {contact.email}
+                      </div>
+                    )}
+                    {(contact.phone || contact.mobile) && (
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Phone className="w-3.5 h-3.5" />
+                        {contact.phone || contact.mobile}
+                      </div>
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={(e) => { e.stopPropagation(); onSelectContact(contact); }}
+                    title="Edit contact"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
 
         {filteredAndSortedContacts.length === 0 && (
           <div className="text-center py-12">
-            <BuildingOfficeIcon className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No contacts found</h3>
-            <p className="mt-1 text-sm text-gray-500">
+            <Users className="mx-auto h-10 w-10 text-muted-foreground mb-3" />
+            <h3 className="text-sm font-medium">No contacts found</h3>
+            <p className="mt-1 text-sm text-muted-foreground">
               {searchTerm ? 'Try adjusting your search terms.' : 'Get started by creating a new contact.'}
             </p>
             {!searchTerm && (
-              <div className="mt-6">
-                <button
-                  onClick={onCreateNew}
-                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  <PlusIcon className="w-5 h-5 mr-2" />
-                  Add Contact
-                </button>
-              </div>
+              <Button onClick={onCreateNew} size="sm" className="mt-4">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Contact
+              </Button>
             )}
           </div>
         )}
-
-        {/* Summary footer */}
-        <div className="bg-gray-50 px-6 py-3 border-t border-gray-200">
-          <div className="flex justify-between items-center text-sm text-gray-500">
-            <span>Showing {filteredAndSortedContacts.length} contacts{contacts.length !== filteredAndSortedContacts.length ? ` of ${contacts.length} total` : ''}</span>
-          </div>
-        </div>
       </div>
+
+      {/* Footer */}
+      <p className="text-sm text-muted-foreground">
+        Showing {filteredAndSortedContacts.length} contact{filteredAndSortedContacts.length !== 1 ? 's' : ''}
+        {contacts.length !== filteredAndSortedContacts.length ? ` of ${contacts.length} total` : ''}
+      </p>
     </div>
   );
 };

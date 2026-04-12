@@ -18,6 +18,20 @@ import OpportunityForm from './components/OpportunityForm';
 import TaskForm from './components/TaskForm';
 import Documents from './components/Documents';
 import UserSearch from './components/UserSearch';
+import { Button } from './components/ui/button';
+import { Badge } from './components/ui/badge';
+import { Alert, AlertDescription } from './components/ui/alert';
+import { Avatar, AvatarFallback } from './components/ui/avatar';
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
+} from './components/ui/dropdown-menu';
+import {
+  LayoutDashboard, Building2, Users, DollarSign, Target,
+  CheckSquare, BarChart3, BookOpen, Settings, LogOut,
+  User as UserIcon, ChevronDown, Loader2, AlertCircle, CheckCircle2
+} from 'lucide-react';
+import { cn } from './lib/utils';
 
 const AppContent: React.FC = () => {
   const { isAuthenticated, loading: authLoading, login, logout, hasAnyRole } = useAuth();
@@ -104,7 +118,7 @@ const AppContent: React.FC = () => {
         setBackendStatus('connected');
       } catch (err) {
         setBackendStatus('error');
-        setError('Backend connection failed. Make sure the server is running on http://localhost:8000');
+        setError('Backend connection failed. Make sure the server is running on http://localhost:8001');
       }
     };
     checkBackend();
@@ -212,136 +226,118 @@ const AppContent: React.FC = () => {
     switch (backendStatus) {
       case 'checking':
         return (
-          <div className="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded mb-4">
-            🔄 Checking backend connection...
-          </div>
+          <Alert variant="info" className="mb-4">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <AlertDescription>Checking backend connection…</AlertDescription>
+          </Alert>
         );
       case 'error':
         return (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            ❌ Backend connection failed. Make sure your FastAPI server is running on http://localhost:8000
-            <br />
-            <small>Run: <code>cd backend && python main_simple.py</code></small>
-          </div>
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Backend connection failed. Make sure the server is running on http://localhost:8001
+            </AlertDescription>
+          </Alert>
         );
       case 'connected':
         return (
-          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
-            ✅ Connected to backend successfully
-          </div>
+          <Alert variant="success" className="mb-4">
+            <CheckCircle2 className="h-4 w-4" />
+            <AlertDescription>Connected to backend successfully</AlertDescription>
+          </Alert>
         );
     }
   };
 
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, match: 'dashboard' },
+    { id: 'organizations', label: 'Organizations', icon: Building2, match: 'organization' },
+    { id: 'contacts', label: 'Contacts', icon: Users, match: 'contact' },
+    { id: 'fundraising', label: 'Fundraising', icon: DollarSign, match: 'fundraising' },
+    { id: 'opportunities', label: 'Opportunities', icon: Target, match: 'opportunity' },
+    { id: 'tasks', label: 'Tasks', icon: CheckSquare, match: 'task' },
+    { id: 'users', label: 'Team', icon: Users, match: 'users' },
+    { id: 'reports', label: 'Reports', icon: BarChart3, match: 'reports' },
+    { id: 'documents', label: 'Knowledge Base', icon: BookOpen, match: 'documents' },
+  ] as const;
+
   const renderNavigationBar = () => (
-    <nav className="bg-white shadow-lg mb-8">
-      <div className="container mx-auto px-4">
-        <div className="flex justify-center space-x-8">
-          <button
-            onClick={() => setActiveView('dashboard')}
-            className={`py-4 px-6 font-medium transition-colors border-b-2 ${
-              activeView === 'dashboard' 
-                ? 'border-blue-500 text-blue-600 bg-blue-50' 
-                : 'border-transparent text-gray-600 hover:text-blue-600 hover:border-blue-300'
-            }`}
-          >
-            📈 Dashboard
-          </button>
-          <button
-            onClick={() => setActiveView('organizations')}
-            className={`py-4 px-6 font-medium transition-colors border-b-2 ${
-              activeView.startsWith('organization') 
-                ? 'border-purple-500 text-purple-600 bg-purple-50' 
-                : 'border-transparent text-gray-600 hover:text-purple-600 hover:border-purple-300'
-            }`}
-          >
-            📊 Organizations
-          </button>
-          <button
-            onClick={() => setActiveView('contacts')}
-            className={`py-4 px-6 font-medium transition-colors border-b-2 ${
-              activeView.startsWith('contact') 
-                ? 'border-blue-500 text-blue-600 bg-blue-50' 
-                : 'border-transparent text-gray-600 hover:text-blue-600 hover:border-blue-300'
-            }`}
-          >
-            👥 Contacts
-          </button>
-          <button
-            onClick={() => setActiveView('fundraising')}
-            className={`py-4 px-6 font-medium transition-colors border-b-2 ${
-              activeView === 'fundraising' 
-                ? 'border-green-500 text-green-600 bg-green-50' 
-                : 'border-transparent text-gray-600 hover:text-green-600 hover:border-green-300'
-            }`}
-          >
-            💰 Fundraising Campaigns
-          </button>
-          <button
-            onClick={() => setActiveView('opportunities')}
-            className={`py-4 px-6 font-medium transition-colors border-b-2 ${
-              activeView.startsWith('opportunity') 
-                ? 'border-orange-500 text-orange-600 bg-orange-50' 
-                : 'border-transparent text-gray-600 hover:text-orange-600 hover:border-orange-300'
-            }`}
-          >
-            🎯 Opportunities
-          </button>
-          <button
-            onClick={() => setActiveView('tasks')}
-            className={`py-4 px-6 font-medium transition-colors border-b-2 ${
-              activeView.startsWith('task') 
-                ? 'border-cyan-500 text-cyan-600 bg-cyan-50' 
-                : 'border-transparent text-gray-600 hover:text-cyan-600 hover:border-cyan-300'
-            }`}
-          >
-            ✅ Tasks
-          </button>
-          <button
-            onClick={() => setActiveView('users')}
-            className={`py-4 px-6 font-medium transition-colors border-b-2 ${
-              activeView === 'users' 
-                ? 'border-indigo-500 text-indigo-600 bg-indigo-50' 
-                : 'border-transparent text-gray-600 hover:text-indigo-600 hover:border-indigo-300'
-            }`}
-          >
-            🏢 Team Members
-          </button>
-          <button
-            onClick={() => setActiveView('reports')}
-            className={`py-4 px-6 font-medium transition-colors border-b-2 ${
-              activeView === 'reports' 
-                ? 'border-orange-500 text-orange-600 bg-orange-50' 
-                : 'border-transparent text-gray-600 hover:text-orange-600 hover:border-orange-300'
-            }`}
-          >
-            📊 Reports
-          </button>
-          <button
-            onClick={() => setActiveView('documents')}
-            className={`py-4 px-6 font-medium transition-colors border-b-2 ${
-              activeView === 'documents'
-                ? 'border-green-500 text-green-600 bg-green-50'
-                : 'border-transparent text-gray-600 hover:text-green-600 hover:border-green-300'
-            }`}
-          >
-            📚 Knowledge Base
-          </button>
+    <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-14 items-center px-4 gap-2">
+        {/* Brand */}
+        <div className="flex items-center gap-2 font-semibold text-foreground mr-4 shrink-0">
+          <div className="h-7 w-7 rounded-md bg-primary flex items-center justify-center">
+            <span className="text-primary-foreground text-xs font-bold">N</span>
+          </div>
+          <span className="hidden sm:inline">Niveshya CRM</span>
+        </div>
+
+        {/* Nav links */}
+        <nav className="flex items-center gap-1 overflow-x-auto flex-1 scrollbar-none">
+          {navItems.map(({ id, label, icon: Icon, match }) => {
+            const isActive = activeView === id || activeView.startsWith(match);
+            return (
+              <button
+                key={id}
+                onClick={() => setActiveView(id as any)}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
+                  isActive
+                    ? 'bg-primary/10 text-primary'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                )}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                {label}
+              </button>
+            );
+          })}
           {hasAnyRole(['Super Admin', 'Admin']) && (
             <button
               onClick={() => setActiveView('admin-settings')}
-              className={`py-4 px-6 font-medium transition-colors border-b-2 ${
-                activeView === 'admin-settings' 
-                  ? 'border-purple-500 text-purple-600 bg-purple-50' 
-                  : 'border-transparent text-gray-600 hover:text-purple-600 hover:border-purple-300'
-              }`}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium whitespace-nowrap transition-colors',
+                activeView === 'admin-settings'
+                  ? 'bg-primary/10 text-primary'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              )}
             >
-              ⚙️ Admin Settings
+              <Settings className="h-4 w-4 shrink-0" />
+              Admin
             </button>
           )}
-        </div>
+        </nav>
+
+        {/* Right-side user menu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="gap-2 shrink-0">
+              <Avatar className="h-7 w-7">
+                <AvatarFallback className="text-xs">
+                  {currentUser?.name?.charAt(0).toUpperCase() || 'U'}
+                </AvatarFallback>
+              </Avatar>
+              <span className="hidden sm:inline text-sm">{currentUser?.name || 'User'}</span>
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setActiveView('user-profile')}>
+              <UserIcon className="mr-2 h-4 w-4" />
+              Profile
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={logout} className="text-destructive focus:text-destructive">
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
-    </nav>
+    </header>
   );
 
   // Helper functions for search and sort
@@ -3560,60 +3556,27 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <header className="text-center mb-8">
-          <div className="flex justify-between items-center mb-4">
-            <div className="flex-1"></div>
-            <div className="flex-1 text-center">
-              <h1 className="text-4xl font-bold text-gray-900 mb-2">
-                Niveshya Lead Management System
-              </h1>
-              <p className="text-xl text-gray-600">
-                Investment tracking and lead management platform
-              </p>
-            </div>
-            <div className="flex-1 flex justify-end">
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={() => setActiveView('user-profile')}
-                  className="text-gray-600 hover:text-gray-900"
-                  title="User Profile"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </button>
-                <button
-                  onClick={logout}
-                  className="text-gray-600 hover:text-gray-900"
-                  title="Logout"
-                >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        </header>
-        
-        {renderBackendStatus()}
-        
-        {renderNavigationBar()}
-        
-        {error && (
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
-            ❌ {error}
-          </div>
+    <div className="min-h-screen bg-background text-foreground">
+      {renderNavigationBar()}
+
+      <main className="container mx-auto px-4 py-6 max-w-7xl">
+        {backendStatus !== 'connected' && (
+          <div className="mb-4">{renderBackendStatus()}</div>
         )}
-        
+
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
         {renderContent()}
-        
-        <footer className="mt-12 text-center text-gray-500">
-          <p>© 2025 Niveshya Lead Management System</p>
-        </footer>
-      </div>
+      </main>
+
+      <footer className="mt-12 pb-6 text-center text-sm text-muted-foreground">
+        © 2025 Niveshya Lead Management System
+      </footer>
     </div>
   );
 };

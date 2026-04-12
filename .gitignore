@@ -27,3 +27,4 @@ backend/migrations/__pycache__/
 backend/app/controllers/__pycache__/
 backend/app/controllers/__pycache__/*.pyc
 backend/app/__pycache__/
+nextjs-crm/

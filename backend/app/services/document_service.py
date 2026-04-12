@@ -5,8 +5,10 @@ Following SOLID principles with dependency injection
 
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from app.models.document import Document, DocumentType, DocumentCategory, DocumentStatus
+from app.models.document import DocumentMetadata, DocumentType, DocumentCategory, DocumentStatus
 from beanie import PydanticObjectId
+
+Document = DocumentMetadata  # alias for brevity
 
 
 class DocumentService:

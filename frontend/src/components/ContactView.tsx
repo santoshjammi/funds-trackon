@@ -1,5 +1,9 @@
 import React from 'react';
 import { Contact } from '../services/api';
+import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Badge } from './ui/badge';
+import { Pencil, Trash2 } from 'lucide-react';
 
 interface ContactViewProps {
   contact: Contact;
@@ -7,129 +11,89 @@ interface ContactViewProps {
   onDelete: () => void;
 }
 
+const Field: React.FC<{ label: string; value?: string | null }> = ({ label, value }) => (
+  <div>
+    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
+    <p className="mt-0.5 text-sm">{value || '—'}</p>
+  </div>
+);
+
 const ContactView: React.FC<ContactViewProps> = ({ contact, onEdit, onDelete }) => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">{contact.name}</h2>
-        <div className="flex space-x-2">
-          <button
-            onClick={onEdit}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            Edit Contact
-          </button>
-          <button
-            onClick={onDelete}
-            className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-            title="Delete Contact"
-          >
+        <h2 className="text-2xl font-semibold tracking-tight">{contact.name}</h2>
+        <div className="flex gap-2">
+          <Button onClick={onEdit} size="sm">
+            <Pencil className="w-4 h-4 mr-2" />
+            Edit
+          </Button>
+          <Button onClick={onDelete} variant="destructive" size="sm">
+            <Trash2 className="w-4 h-4 mr-2" />
             Delete
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">Basic Information</h3>
-          <div className="space-y-3">
-            <div>
-              <span className="font-medium text-gray-700">Name:</span>
-              <p className="text-gray-900">{contact.name || 'Not specified'}</p>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700">Organization:</span>
-              <p className="text-gray-900">{contact.organisation || 'Not specified'}</p>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700">Designation:</span>
-              <p className="text-gray-900">{contact.designation || 'Not specified'}</p>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700">Branch/Department:</span>
-              <p className="text-gray-900">{contact.branch_department || 'Not specified'}</p>
-            </div>
-          </div>
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Card>
+          <CardHeader><CardTitle className="text-base">Basic Information</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <Field label="Name" value={contact.name} />
+            <Field label="Organization" value={contact.organisation} />
+            <Field label="Designation" value={contact.designation} />
+            <Field label="Branch / Department" value={contact.branch_department} />
+          </CardContent>
+        </Card>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">Contact Information</h3>
-          <div className="space-y-3">
-            <div>
-              <span className="font-medium text-gray-700">Email:</span>
-              <p className="text-gray-900">{contact.email || 'Not specified'}</p>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700">Phone:</span>
-              <p className="text-gray-900">{contact.phone || 'Not specified'}</p>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700">Mobile:</span>
-              <p className="text-gray-900">{contact.mobile || 'Not specified'}</p>
-            </div>
-          </div>
-        </div>
+        <Card>
+          <CardHeader><CardTitle className="text-base">Contact Information</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <Field label="Email" value={contact.email} />
+            <Field label="Phone" value={contact.phone} />
+            <Field label="Mobile" value={contact.mobile} />
+          </CardContent>
+        </Card>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">Location Information</h3>
-          <div className="space-y-3">
-            <div>
-              <span className="font-medium text-gray-700">Geography/Region:</span>
-              <p className="text-gray-900">{contact.geography_region || 'Not specified'}</p>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700">Country/Location:</span>
-              <p className="text-gray-900">{contact.country_location || 'Not specified'}</p>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700">Sub-location:</span>
-              <p className="text-gray-900">{contact.sub_location || 'Not specified'}</p>
-            </div>
-          </div>
-        </div>
+        <Card>
+          <CardHeader><CardTitle className="text-base">Location</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <Field label="Geography / Region" value={contact.geography_region} />
+            <Field label="Country / Location" value={contact.country_location} />
+            <Field label="Sub-location" value={contact.sub_location} />
+          </CardContent>
+        </Card>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h3 className="text-lg font-semibold mb-4">Additional Information</h3>
-          <div className="space-y-3">
+        <Card>
+          <CardHeader><CardTitle className="text-base">Additional</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <Field label="Address" value={contact.address} />
+            <Field label="Notes" value={contact.notes_comments} />
             <div>
-              <span className="font-medium text-gray-700">Address:</span>
-              <p className="text-gray-900 whitespace-pre-wrap">{contact.address || 'Not specified'}</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</p>
+              <div className="mt-1">
+                <Badge variant={contact.status === 'active' ? 'success' : 'destructive'}>
+                  {contact.status || 'unknown'}
+                </Badge>
+              </div>
             </div>
-            <div>
-              <span className="font-medium text-gray-700">Notes/Comments:</span>
-              <p className="text-gray-900 whitespace-pre-wrap">{contact.notes_comments || 'Not specified'}</p>
-            </div>
-            <div>
-              <span className="font-medium text-gray-700">Status:</span>
-              <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                contact.status === 'active'
-                  ? 'bg-green-100 text-green-800'
-                  : 'bg-red-100 text-red-800'
-              }`}>
-                {contact.status || 'Not specified'}
-              </span>
-            </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="bg-white p-6 rounded-lg shadow">
-        <h3 className="text-lg font-semibold mb-4">Timestamps</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <span className="font-medium text-gray-700">Created At:</span>
-            <p className="text-gray-900">
-              {contact.created_at ? new Date(contact.created_at).toLocaleString() : 'Not available'}
-            </p>
-          </div>
-          <div>
-            <span className="font-medium text-gray-700">Updated At:</span>
-            <p className="text-gray-900">
-              {contact.updated_at ? new Date(contact.updated_at).toLocaleString() : 'Not available'}
-            </p>
-          </div>
-        </div>
-      </div>
+      <Card>
+        <CardHeader><CardTitle className="text-base">Timestamps</CardTitle></CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Field
+            label="Created At"
+            value={contact.created_at ? new Date(contact.created_at).toLocaleString() : undefined}
+          />
+          <Field
+            label="Updated At"
+            value={contact.updated_at ? new Date(contact.updated_at).toLocaleString() : undefined}
+          />
+        </CardContent>
+      </Card>
     </div>
   );
 };

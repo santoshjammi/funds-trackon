@@ -1,16 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import {
-  ChartBarIcon,
-  CurrencyDollarIcon,
-  UserGroupIcon,
-  ClipboardDocumentListIcon,
-  ArrowTrendingUpIcon,
-  ArrowTrendingDownIcon,
-  ExclamationTriangleIcon,
-  CheckCircleIcon,
-  PhoneIcon,
-  BuildingOfficeIcon
-} from '@heroicons/react/24/outline';
+  BarChart2,
+  DollarSign,
+  Users,
+  ClipboardList,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+  CheckCircle2,
+  Phone,
+  Building2,
+  RefreshCw,
+  Loader2
+} from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
+import { Alert, AlertDescription } from './ui/alert';
+import { Skeleton } from './ui/skeleton';
 import {
   BarChart,
   Bar,
@@ -34,46 +40,42 @@ interface KPICardProps {
   subtitle?: string;
 }
 
-const KPICard: React.FC<KPICardProps> = ({ title, value, change, icon: Icon, color, subtitle }) => {
-  const colorClasses = {
-    blue: 'bg-blue-50 text-blue-600 border-blue-200',
-    green: 'bg-green-50 text-green-600 border-green-200',
-    yellow: 'bg-yellow-50 text-yellow-600 border-yellow-200',
-    red: 'bg-red-50 text-red-600 border-red-200',
-    purple: 'bg-purple-50 text-purple-600 border-purple-200',
-    indigo: 'bg-indigo-50 text-indigo-600 border-indigo-200',
-    gray: 'bg-gray-50 text-gray-600 border-gray-200',
-  };
+const colorClass = {
+  blue: 'text-blue-600 bg-blue-50',
+  green: 'text-green-600 bg-green-50',
+  yellow: 'text-yellow-600 bg-yellow-50',
+  red: 'text-red-600 bg-red-50',
+  purple: 'text-purple-600 bg-purple-50',
+  indigo: 'text-indigo-600 bg-indigo-50',
+  gray: 'text-gray-600 bg-gray-50',
+};
 
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+const KPICard: React.FC<KPICardProps> = ({ title, value, change, icon: Icon, color, subtitle }) => (
+  <Card>
+    <CardContent className="pt-6">
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-2xl font-bold text-gray-900">{value}</p>
-          {subtitle && (
-            <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
-          )}
+          <p className="text-sm font-medium text-muted-foreground mb-1">{title}</p>
+          <p className="text-2xl font-bold">{value}</p>
+          {subtitle && <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>}
           {change !== undefined && (
             <div className="flex items-center mt-2">
-              {change >= 0 ? (
-                <ArrowTrendingUpIcon className="h-4 w-4 text-green-500 mr-1" />
-              ) : (
-                <ArrowTrendingDownIcon className="h-4 w-4 text-red-500 mr-1" />
-              )}
+              {change >= 0
+                ? <TrendingUp className="h-4 w-4 text-green-500 mr-1" />
+                : <TrendingDown className="h-4 w-4 text-red-500 mr-1" />}
               <span className={`text-sm font-medium ${change >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 {Math.abs(change)}%
               </span>
             </div>
           )}
         </div>
-        <div className={`p-3 rounded-lg ${colorClasses[color]}`}>
+        <div className={`p-3 rounded-lg ${colorClass[color]}`}>
           <Icon className="h-6 w-6" />
         </div>
       </div>
-    </div>
-  );
-};
+    </CardContent>
+  </Card>
+);
 
 interface ChartData {
   name: string;
@@ -173,10 +175,16 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToContacts, onNavigateT
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-          <span className="text-gray-600 font-medium">Loading Analytics...</span>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <Skeleton className="h-9 w-64" />
+          <Skeleton className="h-9 w-24" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-32" />)}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-72" />)}
         </div>
       </div>
     );
@@ -184,32 +192,24 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToContacts, onNavigateT
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white rounded-lg shadow-md p-8 max-w-md w-full">
-          <div className="flex items-center mb-4">
-            <ExclamationTriangleIcon className="h-8 w-8 text-red-500 mr-3" />
-            <h2 className="text-lg font-semibold text-gray-900">Error Loading Dashboard</h2>
-          </div>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <button
-            onClick={handleRefresh}
-            className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Try Again
-          </button>
-        </div>
+      <div className="max-w-md mx-auto mt-16">
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>{error}</span>
+            <Button variant="outline" size="sm" onClick={handleRefresh} className="ml-3">Try Again</Button>
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
 
   if (!dashboardSummary || !fundraisingAnalytics || !opportunityMetrics || !taskAnalytics || !contactAnalytics) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <ExclamationTriangleIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">No Data Available</h2>
-          <p className="text-gray-600">Dashboard data is not available at the moment.</p>
-        </div>
+      <div className="text-center py-24">
+        <AlertTriangle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+        <h2 className="text-lg font-semibold mb-2">No Data Available</h2>
+        <p className="text-muted-foreground">Dashboard data is not available at the moment.</p>
       </div>
     );
   }
@@ -250,64 +250,31 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToContacts, onNavigateT
     }));
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="space-y-6">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Niveshya Analytics Dashboard</h1>
-              <p className="text-gray-600 mt-2">Investment tracking and lead management insights</p>
-            </div>
-            <button
-              onClick={handleRefresh}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              <span>Refresh</span>
-            </button>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">Analytics Dashboard</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Investment tracking and lead management insights</p>
           </div>
+          <Button variant="outline" size="sm" onClick={handleRefresh}>
+            <RefreshCw className="h-4 w-4 mr-2" />Refresh
+          </Button>
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <KPICard
-            title="Total Fundraising Targets"
-            value={dashboardSummary.fundraising_targets.total_targets}
-            icon={CurrencyDollarIcon}
-            color="blue"
-            subtitle={`${dashboardSummary.fundraising_targets.high_priority_targets} high priority`}
-          />
-          <KPICard
-            title="Active Opportunities"
-            value={dashboardSummary.opportunities.in_process}
-            icon={ArrowTrendingUpIcon}
-            color="green"
-            subtitle={`${dashboardSummary.opportunities.total_opportunities} total opportunities`}
-          />
-          <KPICard
-            title="Task Completion Rate"
-            value={`${dashboardSummary.tasks.completion_rate}%`}
-            icon={CheckCircleIcon}
-            color="purple"
-            subtitle={`${dashboardSummary.tasks.completed_tasks}/${dashboardSummary.tasks.total_tasks} completed`}
-          />
-          <KPICard
-            title="Network Contacts"
-            value={dashboardSummary.contacts.total_contacts}
-            icon={UserGroupIcon}
-            color="indigo"
-            subtitle={`${dashboardSummary.contacts.organizations} organizations`}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <KPICard title="Total Fundraising Targets" value={dashboardSummary.fundraising_targets.total_targets} icon={DollarSign} color="blue" subtitle={`${dashboardSummary.fundraising_targets.high_priority_targets} high priority`} />
+          <KPICard title="Active Opportunities" value={dashboardSummary.opportunities.in_process} icon={TrendingUp} color="green" subtitle={`${dashboardSummary.opportunities.total_opportunities} total opportunities`} />
+          <KPICard title="Task Completion Rate" value={`${dashboardSummary.tasks.completion_rate}%`} icon={CheckCircle2} color="purple" subtitle={`${dashboardSummary.tasks.completed_tasks}/${dashboardSummary.tasks.total_tasks} completed`} />
+          <KPICard title="Network Contacts" value={dashboardSummary.contacts.total_contacts} icon={Users} color="indigo" subtitle={`${dashboardSummary.contacts.organizations} organizations`} />
         </div>
 
         {/* Charts Row 1 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Fundraising Priority Distribution */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Fundraising Priority Distribution</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader><CardTitle className="text-base">Fundraising Priority Distribution</CardTitle></CardHeader>
+            <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -329,11 +296,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToContacts, onNavigateT
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Opportunity Pipeline */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Opportunity Pipeline</h3>
+          <Card>
+            <CardHeader><CardTitle className="text-base">Opportunity Pipeline</CardTitle></CardHeader>
+            <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={opportunityPipelineData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -348,14 +316,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToContacts, onNavigateT
                 />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Charts Row 2 */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Target Categories */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Target Categories</h3>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card>
+            <CardHeader><CardTitle className="text-base">Target Categories</CardTitle></CardHeader>
+            <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={categoryData} layout="horizontal">
                 <CartesianGrid strokeDasharray="3 3" />
@@ -370,11 +339,12 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToContacts, onNavigateT
                 />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Task Types */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Task Distribution</h3>
+          <Card>
+            <CardHeader><CardTitle className="text-base">Task Distribution</CardTitle></CardHeader>
+            <CardContent>
             <ResponsiveContainer width="100%" height={300}>
               <PieChart>
                 <Pie
@@ -396,14 +366,15 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToContacts, onNavigateT
                 <Tooltip />
               </PieChart>
             </ResponsiveContainer>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Charts Row 3 */}
-        <div className="grid grid-cols-1 gap-6 mb-8">
-          {/* Top Organizations */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Organizations by Contact Count</h3>
+        <div className="grid grid-cols-1 gap-4">
+          <Card>
+            <CardHeader><CardTitle className="text-base">Top Organizations by Contact Count</CardTitle></CardHeader>
+            <CardContent>
             <ResponsiveContainer width="100%" height={400}>
               <BarChart data={topOrganizations}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -418,125 +389,62 @@ const Dashboard: React.FC<DashboardProps> = ({ onNavigateToContacts, onNavigateT
                 />
               </BarChart>
             </ResponsiveContainer>
-          </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Metrics Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {/* Contact Quality */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center mb-4">
-              <PhoneIcon className="h-6 w-6 text-blue-600 mr-2" />
-              <h3 className="text-lg font-semibold text-gray-900">Contact Quality</h3>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2"><Phone className="h-5 w-5 text-blue-600" />Contact Quality</CardTitle>
+            </CardHeader>
+            <CardContent>
             <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">With Phone</span>
-                <span className="text-sm font-medium">{contactAnalytics.data_quality_metrics.with_phone}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">With Email</span>
-                <span className="text-sm font-medium">{contactAnalytics.data_quality_metrics.with_email}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Complete Profiles</span>
-                <span className="text-sm font-medium">{contactAnalytics.data_quality_metrics.complete_profiles}</span>
-              </div>
-              <div className="pt-2 border-t">
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium text-blue-600">Data Completeness</span>
-                  <span className="text-sm font-bold text-blue-600">{contactAnalytics.network_value.data_completeness}%</span>
-                </div>
-              </div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">With Phone</span><span className="font-medium">{contactAnalytics.data_quality_metrics.with_phone}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">With Email</span><span className="font-medium">{contactAnalytics.data_quality_metrics.with_email}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Complete Profiles</span><span className="font-medium">{contactAnalytics.data_quality_metrics.complete_profiles}</span></div>
+              <div className="flex justify-between text-sm pt-2 border-t"><span className="font-medium text-blue-600">Data Completeness</span><span className="font-bold text-blue-600">{contactAnalytics.network_value.data_completeness}%</span></div>
             </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Task Efficiency */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center mb-4">
-              <ClipboardDocumentListIcon className="h-6 w-6 text-green-600 mr-2" />
-              <h3 className="text-lg font-semibold text-gray-900">Task Efficiency</h3>
-            </div>
+          <Card>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><ClipboardList className="h-5 w-5 text-green-600" />Task Efficiency</CardTitle></CardHeader>
+            <CardContent>
             <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Completed</span>
-                <span className="text-sm font-medium">{taskAnalytics.completion_metrics.completed}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Pending</span>
-                <span className="text-sm font-medium">{taskAnalytics.completion_metrics.pending}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Overdue</span>
-                <span className="text-sm font-medium text-red-600">{taskAnalytics.timing_analysis.overdue_tasks}</span>
-              </div>
-              <div className="pt-2 border-t">
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium text-green-600">Completion Rate</span>
-                  <span className="text-sm font-bold text-green-600">{taskAnalytics.completion_metrics.completion_rate}%</span>
-                </div>
-              </div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Completed</span><span className="font-medium">{taskAnalytics.completion_metrics.completed}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Pending</span><span className="font-medium">{taskAnalytics.completion_metrics.pending}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Overdue</span><span className="font-medium text-red-600">{taskAnalytics.timing_analysis.overdue_tasks}</span></div>
+              <div className="flex justify-between text-sm pt-2 border-t"><span className="font-medium text-green-600">Completion Rate</span><span className="font-bold text-green-600">{taskAnalytics.completion_metrics.completion_rate}%</span></div>
             </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Pipeline Health */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center mb-4">
-              <ChartBarIcon className="h-6 w-6 text-purple-600 mr-2" />
-              <h3 className="text-lg font-semibold text-gray-900">Pipeline Health</h3>
-            </div>
+          <Card>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><BarChart2 className="h-5 w-5 text-purple-600" />Pipeline Health</CardTitle></CardHeader>
+            <CardContent>
             <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Active Targets</span>
-                <span className="text-sm font-medium">{fundraisingAnalytics.pipeline_health.active_pipeline}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">High Priority</span>
-                <span className="text-sm font-medium">{fundraisingAnalytics.pipeline_health.conversion_indicators.advanced}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">With Contact Info</span>
-                <span className="text-sm font-medium">{Math.round((fundraisingAnalytics.contact_data_quality.with_reference / fundraisingAnalytics.pipeline_health.total_campaigns) * 100)}%</span>
-              </div>
-              <div className="pt-2 border-t">
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium text-purple-600">Conversion Rate</span>
-                  <span className="text-sm font-bold text-purple-600">{opportunityMetrics.opportunity_health.conversion_rate}%</span>
-                </div>
-              </div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Active Targets</span><span className="font-medium">{fundraisingAnalytics.pipeline_health.active_pipeline}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">High Priority</span><span className="font-medium">{fundraisingAnalytics.pipeline_health.conversion_indicators.advanced}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">With Contact Info</span><span className="font-medium">{Math.round((fundraisingAnalytics.contact_data_quality.with_reference / fundraisingAnalytics.pipeline_health.total_campaigns) * 100)}%</span></div>
+              <div className="flex justify-between text-sm pt-2 border-t"><span className="font-medium text-purple-600">Conversion Rate</span><span className="font-bold text-purple-600">{opportunityMetrics.opportunity_health.conversion_rate}%</span></div>
             </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          {/* Network Value */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center mb-4">
-              <BuildingOfficeIcon className="h-6 w-6 text-indigo-600 mr-2" />
-              <h3 className="text-lg font-semibold text-gray-900">Network Value</h3>
-            </div>
+          <Card>
+            <CardHeader><CardTitle className="text-base flex items-center gap-2"><Building2 className="h-5 w-5 text-indigo-600" />Network Value</CardTitle></CardHeader>
+            <CardContent>
             <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Total Contacts</span>
-                <span className="text-sm font-medium">{contactAnalytics.network_value.total_contacts}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Organizations</span>
-                <span className="text-sm font-medium">{contactAnalytics.network_value.unique_organizations}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-600">Connected</span>
-                <span className="text-sm font-medium">{contactAnalytics.connection_metrics.connected}</span>
-              </div>
-              <div className="pt-2 border-t">
-                <div className="flex justify-between">
-                  <span className="text-sm font-medium text-indigo-600">Connection Rate</span>
-                  <span className="text-sm font-bold text-indigo-600">{contactAnalytics.network_value.connection_rate}%</span>
-                </div>
-              </div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Total Contacts</span><span className="font-medium">{contactAnalytics.network_value.total_contacts}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Organizations</span><span className="font-medium">{contactAnalytics.network_value.unique_organizations}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-muted-foreground">Connected</span><span className="font-medium">{contactAnalytics.connection_metrics.connected}</span></div>
+              <div className="flex justify-between text-sm pt-2 border-t"><span className="font-medium text-indigo-600">Connection Rate</span><span className="font-bold text-indigo-600">{contactAnalytics.network_value.connection_rate}%</span></div>
             </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
-      </div>
-
     </div>
   );
 };

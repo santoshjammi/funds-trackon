@@ -5,15 +5,19 @@ services:
     image: mongo:7
     container_name: niveshya-mongo
     restart: unless-stopped
-    profiles:
-      - embedded-mongo
     ports:
       - "${MONGO_PORT:-27019}:27017"
     volumes:
       - mongo_data:/data/db
       - ./mongo-init:/docker-entrypoint-initdb.d:ro
     environment:
-      - MONGO_INITDB_DATABASE=funds_tracker_db
+      - MONGO_INITDB_DATABASE=${DATABASE_NAME}
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping').ok", "--quiet"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - appnet
 
@@ -23,19 +27,20 @@ services:
       dockerfile: backend/Dockerfile
     container_name: niveshya-backend
     restart: unless-stopped
+    env_file:
+      - .env
     environment:
-      - MONGODB_URL=${MONGODB_URL:-mongodb://mongo:27017/funds_trackon}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - BACKEND_PORT=${BACKEND_PORT:-8000}
-      - FRONTEND_PORT=${FRONTEND_PORT:-3000}
-      - CORS_ORIGINS=${CORS_ORIGINS}
-      - NODE_ENV=production
+      - MONGODB_URL=mongodb://mongo:27017/${DATABASE_NAME}
+      - ENVIRONMENT=production
       - DEBUG=False
+      - PORT=8001
     volumes:
       - uploads:/app/uploads
-    # No hard depends_on, to allow connecting to external/host MongoDB
+    depends_on:
+      mongo:
+        condition: service_healthy
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "${BACKEND_PORT:-8001}:8001"
     networks:
       - appnet
 
@@ -43,12 +48,13 @@ services:
     build:
       context: .
       dockerfile: frontend/Dockerfile
+      args:
+        REACT_APP_API_BASE_URL: http://localhost:${BACKEND_PORT:-8001}
     container_name: niveshya-frontend
     restart: unless-stopped
-    environment:
-      - REACT_APP_BACKEND_URL=http://backend:8000
     ports:
-      - "${FRONTEND_PORT:-3000}:80"
+      - "80:80"
+      - "${FRONTEND_PORT:-3002}:80"
     depends_on:
       - backend
     networks:
