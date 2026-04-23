@@ -88,12 +88,14 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ entityType, entityId, o
 
       <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-1.5">
-          <Label>File <span className="text-destructive">*</span></Label>
+          <Label htmlFor="doc-file">File <span className="text-destructive">*</span></Label>
           <input
+            id="doc-file"
             type="file"
             onChange={handleFileChange}
             className="block w-full text-sm text-muted-foreground file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border file:border-border file:text-sm file:font-medium file:bg-background hover:file:bg-muted cursor-pointer"
             accept="*/*"
+            title="Select a file to upload"
           />
           {file && <p className="text-xs text-muted-foreground">{file.name} ({(file.size / 1024 / 1024).toFixed(2)} MB)</p>}
         </div>
@@ -134,6 +136,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ entityType, entityId, o
             type="checkbox" id="isPublic" checked={isPublic}
             onChange={(e) => setIsPublic(e.target.checked)}
             className="h-4 w-4 rounded border-input accent-primary"
+            aria-label="Make this document publicly accessible"
           />
           <Label htmlFor="isPublic" className="font-normal cursor-pointer">Make this document publicly accessible</Label>
         </div>
