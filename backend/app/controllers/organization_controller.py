@@ -67,7 +67,7 @@ class OrganizationResponse(BaseModel):
 organization_router = APIRouter(tags=["organizations"])
 
 
-@organization_router.post("/", response_model=OrganizationResponse)
+@organization_router.post("", response_model=OrganizationResponse)
 async def create_organization(organization: OrganizationCreate):
     """Create a new organization"""
     try:
@@ -78,7 +78,7 @@ async def create_organization(organization: OrganizationCreate):
         raise HTTPException(status_code=500, detail=f"Error creating organization: {str(e)}")
 
 
-@organization_router.get("/", response_model=List[Organization])
+@organization_router.get("", response_model=List[Organization])
 async def get_all_organizations(
     skip: int = Query(0, ge=0, description="Number of organizations to skip"),
     industry: Optional[IndustryType] = Query(None, description="Filter by industry"),

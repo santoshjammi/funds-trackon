@@ -71,7 +71,7 @@ class DocumentUpdate(BaseModel):
     access_permissions: Optional[List[str]] = None
     updated_by: Optional[str] = None
 
-@document_router.post("/", response_model=Document)
+@document_router.post("", response_model=Document)
 async def create_document(document_data: DocumentCreate):
     """Create a new document with organization context"""
     try:
@@ -112,7 +112,7 @@ async def get_document(document_id: str):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@document_router.get("/", response_model=List[Document])
+@document_router.get("", response_model=List[Document])
 async def get_documents(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000)

@@ -35,7 +35,15 @@ class Settings(BaseSettings):
     
     # OpenAI settings
     openai_api_key: Optional[str] = None
-    
+
+    # Joplin Web Clipper REST API
+    joplin_base_url: str = "http://localhost:41184"
+    joplin_api_token: Optional[str] = None
+
+    # OpenRouter LLM (used by Joplin sync)
+    openrouter_api_key: Optional[str] = None
+    openrouter_model: str = "google/gemma-4-31b-it:free"
+
     # Environment
     environment: str = "development"
     node_env: str = "development"
@@ -47,6 +55,7 @@ class Settings(BaseSettings):
     
     class Config:
         env_file = ".env"
+        extra = "ignore"
 
     @field_validator('cors_origins', mode='before')
     @classmethod

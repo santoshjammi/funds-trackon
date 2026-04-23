@@ -41,6 +41,12 @@ class UserResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     last_login: Optional[datetime] = None
+    joplin_base_url: Optional[str] = None
+    joplin_api_token: Optional[str] = None
+    joplin_master_password: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    claude_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
 
 # Request models
 class UserCreate(BaseModel):
@@ -67,8 +73,14 @@ class UserUpdate(BaseModel):
     username: Optional[str] = None
     role_names: Optional[List[str]] = None
     is_active: Optional[bool] = None
+    joplin_base_url: Optional[str] = None
+    joplin_api_token: Optional[str] = None
+    joplin_master_password: Optional[str] = None
+    openai_api_key: Optional[str] = None
+    claude_api_key: Optional[str] = None
+    openrouter_api_key: Optional[str] = None
 
-@user_router.get("/", response_model=List[UserResponse])
+@user_router.get("", response_model=List[UserResponse])
 async def get_all_users(
     skip: int = Query(0, ge=0)
 ):
@@ -90,7 +102,13 @@ async def get_all_users(
                 is_active=user.is_active,
                 created_at=user.created_at,
                 updated_at=user.updated_at,
-                last_login=user.last_login
+                last_login=user.last_login,
+                joplin_base_url=user.joplin_base_url,
+                joplin_api_token=user.joplin_api_token,
+                joplin_master_password=user.joplin_master_password,
+                openai_api_key=user.openai_api_key,
+                claude_api_key=user.claude_api_key,
+                openrouter_api_key=user.openrouter_api_key,
             ) for user in users
         ]
     except Exception as e:
@@ -121,7 +139,13 @@ async def get_user(user_id: str):
             is_active=user.is_active,
             created_at=user.created_at,
             updated_at=user.updated_at,
-            last_login=user.last_login
+            last_login=user.last_login,
+            joplin_base_url=user.joplin_base_url,
+            joplin_api_token=user.joplin_api_token,
+            joplin_master_password=user.joplin_master_password,
+            openai_api_key=user.openai_api_key,
+            claude_api_key=user.claude_api_key,
+            openrouter_api_key=user.openrouter_api_key,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error fetching user: {str(e)}")
@@ -164,7 +188,7 @@ async def delete_user(user_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting user: {str(e)}")
 
-@user_router.post("/", response_model=dict)
+@user_router.post("", response_model=dict)
 async def create_user(user_data: UserCreate):
     """Create a new user"""
     try:
@@ -194,7 +218,13 @@ async def get_users_by_role(role: str):
                 is_active=user.is_active,
                 created_at=user.created_at,
                 updated_at=user.updated_at,
-                last_login=user.last_login
+                last_login=user.last_login,
+                joplin_base_url=user.joplin_base_url,
+                joplin_api_token=user.joplin_api_token,
+                joplin_master_password=user.joplin_master_password,
+                openai_api_key=user.openai_api_key,
+                claude_api_key=user.claude_api_key,
+                openrouter_api_key=user.openrouter_api_key,
             ) for user in users
         ]
     except Exception as e:

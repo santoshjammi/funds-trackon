@@ -49,6 +49,7 @@ class Task(Document):
     contact_id: Optional[str] = Field(None, description="Related contact ID")
     opportunity_id: Optional[str] = Field(None, description="Related opportunity ID")
     fundraising_id: Optional[str] = Field(None, description="Related fundraising ID")
+    meeting_id: Optional[str] = Field(None, description="Related meeting ID")
     
     # Assignment
     assigned_to: Optional[str] = Field(None, description="Assigned user ID")

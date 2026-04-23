@@ -5,6 +5,12 @@ interface User {
   name: string;
   email: string;
   role_names: string[];
+  joplin_base_url?: string;
+  joplin_api_token?: string;
+  joplin_master_password?: string;
+  openai_api_key?: string;
+  claude_api_key?: string;
+  openrouter_api_key?: string;
 }
 
 interface AuthContextType {

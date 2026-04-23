@@ -206,5 +206,11 @@ async def get_me(current_user: User = Depends(get_current_user)):
         "employment_type": current_user.employment_type.value if current_user.employment_type else None,
         "role_names": current_user.get_role_names(),
         "created_at": current_user.created_at.isoformat() if current_user.created_at else None,
-        "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None
+        "updated_at": current_user.updated_at.isoformat() if current_user.updated_at else None,
+        "joplin_base_url": current_user.joplin_base_url,
+        "joplin_api_token": current_user.joplin_api_token,
+        "joplin_master_password": current_user.joplin_master_password,
+        "openai_api_key": current_user.openai_api_key,
+        "claude_api_key": current_user.claude_api_key,
+        "openrouter_api_key": current_user.openrouter_api_key,
     }

@@ -40,6 +40,17 @@ class User(Document):
     username: Optional[str] = Field(None, description="Username for login", unique=True)
     password_hash: Optional[str] = Field(None, description="Hashed password")
     role_assignments: List[UserRoleAssignment] = Field(default_factory=list, description="Assigned roles")
+
+    # Joplin integration settings (per-user)
+    joplin_base_url: Optional[str] = Field(None, description="User's Joplin Web Clipper API base URL")
+    joplin_api_token: Optional[str] = Field(None, description="User's Joplin Web Clipper API token")
+    joplin_master_password: Optional[str] = Field(None, description="User's Joplin E2EE master password")
+
+    # AI provider API keys (per-user)
+    openai_api_key: Optional[str] = Field(None, description="User's OpenAI API key")
+    claude_api_key: Optional[str] = Field(None, description="User's Anthropic Claude API key")
+    openrouter_api_key: Optional[str] = Field(None, description="User's OpenRouter API key")
+
     is_active: bool = Field(default=True, description="User active status")
     
     # Timestamps

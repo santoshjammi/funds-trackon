@@ -34,7 +34,7 @@ import {
 import { cn } from './lib/utils';
 
 const AppContent: React.FC = () => {
-  const { isAuthenticated, loading: authLoading, login, logout, hasAnyRole } = useAuth();
+  const { isAuthenticated, loading: authLoading, login, logout, hasAnyRole, user: authUser } = useAuth();
   const [activeView, setActiveView] = useState<'dashboard' | 'contacts' | 'contact-detail' | 'organizations' | 'organization-detail' | 'opportunities' | 'opportunity-detail' | 'tasks' | 'task-detail' | 'fundraising' | 'fundraising-detail' | 'users' | 'user-detail' | 'user-profile' | 'admin-settings' | 'reports' | 'documents'>('dashboard');
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [fundraising, setFundraising] = useState<Fundraising[]>([]);
@@ -205,22 +205,18 @@ const AppContent: React.FC = () => {
 
   // Fetch current user data when authenticated
   useEffect(() => {
-    if (isAuthenticated && backendStatus === 'connected' && !currentUser) {
-      // For now, use the first user as current user (mock)
-      // In a real app, you'd decode the JWT or have a /me endpoint
+    if (isAuthenticated && backendStatus === 'connected' && !currentUser && authUser?.id) {
       const fetchCurrentUser = async () => {
         try {
-          const userData = await usersApi.getAll();
-          if (userData.length > 0) {
-            setCurrentUser(userData[0]); // Use first user as current user for demo
-          }
+          const userData = await usersApi.getById(authUser.id);
+          setCurrentUser(userData);
         } catch (error) {
           console.error('Failed to fetch current user:', error);
         }
       };
       fetchCurrentUser();
     }
-  }, [isAuthenticated, backendStatus, currentUser]);
+  }, [isAuthenticated, backendStatus, currentUser, authUser?.id]);
 
   const renderBackendStatus = () => {
     switch (backendStatus) {

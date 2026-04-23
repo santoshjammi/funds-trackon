@@ -168,6 +168,16 @@ export interface User {
   created_at?: string;
   updated_at?: string;
   last_login?: string;
+
+  // Joplin integration (per-user)
+  joplin_base_url?: string;
+  joplin_api_token?: string;
+  joplin_master_password?: string;
+
+  // AI provider keys (per-user)
+  openai_api_key?: string;
+  claude_api_key?: string;
+  openrouter_api_key?: string;
 }
 
 export interface Organization {
@@ -352,7 +362,6 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   // Join base and endpoint without duplicating slashes
   const base = API_BASE_URL.replace(/\/+$/, '');
   const url = `${base}${endpoint}`;
-  const openaiKey = (typeof localStorage !== 'undefined') ? localStorage.getItem('openai_api_key') : null;
   
   const config: RequestInit = {
     headers: {
@@ -367,9 +376,6 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
   const token = getAuthToken();
   if (token) {
     (config.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
-  }
-  if (openaiKey && !('X-OpenAI-API-Key' in (config.headers as Record<string, string>))) {
-    (config.headers as Record<string, string>)['X-OpenAI-API-Key'] = openaiKey;
   }
 
   try {
@@ -404,12 +410,12 @@ async function apiRequest<T>(endpoint: string, options: RequestInit = {}): Promi
 
 // Contact API functions
 export const contactsApi = {
-  getAll: (): Promise<Contact[]> => apiRequest<Contact[]>('/api/contacts/').then(contacts => 
+  getAll: (): Promise<Contact[]> => apiRequest<Contact[]>('/api/contacts').then(contacts => 
     contacts.map((contact: any) => ({ ...contact, id: contact._id || contact.id }))
   ),
   getById: (id: string): Promise<Contact> => apiRequest<Contact>(`/api/contacts/${id}`),
   create: (contact: Omit<Contact, 'id'>): Promise<{message: string, id: string}> => 
-    apiRequest<{message: string, id: string}>('/api/contacts/', {
+    apiRequest<{message: string, id: string}>('/api/contacts', {
       method: 'POST',
       body: JSON.stringify(contact),
     }),
@@ -426,7 +432,7 @@ export const contactsApi = {
 
 // Fundraising API functions
 export const fundraisingApi = {
-  getAll: (): Promise<Fundraising[]> => apiRequest<Fundraising[]>('/api/fundraising/').then(items => items.map((c: any) => ({
+  getAll: (): Promise<Fundraising[]> => apiRequest<Fundraising[]>('/api/fundraising').then(items => items.map((c: any) => ({
     ...c,
     // prefer new fields if present
     tnifmc_request_inr_cr: c.niveshya_request_inr_cr ?? c.tnifmc_request_inr_cr,
@@ -438,7 +444,7 @@ export const fundraisingApi = {
     responsibility_tnifmc: c.responsibility_niveshya ?? c.responsibility_tnifmc,
   })),
   create: (fundraising: Omit<Fundraising, 'id'>): Promise<{message: string, id: string}> =>
-    apiRequest<{message: string, id: string}>('/api/fundraising/', {
+    apiRequest<{message: string, id: string}>('/api/fundraising', {
       method: 'POST',
       body: JSON.stringify(fundraising),
     }),
@@ -489,10 +495,10 @@ export const fundraisingApi = {
 
 // Organizations API functions
 export const organizationsApi = {
-  getAll: (): Promise<Organization[]> => apiRequest<Organization[]>('/api/organizations/'),
+  getAll: (): Promise<Organization[]> => apiRequest<Organization[]>('/api/organizations'),
   getById: (id: string): Promise<Organization> => apiRequest<Organization>(`/api/organizations/${id}`),
   create: (organization: Omit<Organization, 'id'>): Promise<{message: string, id: string}> => 
-    apiRequest<{message: string, id: string}>('/api/organizations/', {
+    apiRequest<{message: string, id: string}>('/api/organizations', {
       method: 'POST',
       body: JSON.stringify(organization),
     }),
@@ -550,7 +556,7 @@ export const authApi = {
 
 // Enhanced Users API functions with password management
 export const usersApi = {
-  getAll: (): Promise<User[]> => apiRequest<User[]>('/api/users/'),
+  getAll: (): Promise<User[]> => apiRequest<User[]>('/api/users'),
   getById: (id: string): Promise<User> => apiRequest<User>(`/api/users/${id}`),
   update: (id: string, user: Partial<User>): Promise<{message: string}> =>
     apiRequest<{message: string}>(`/api/users/${id}`, {
@@ -634,7 +640,7 @@ export const rolesApi = {
 // Meetings API functions
 export const meetingsApi = {
   create: (req: MeetingCreateRequest): Promise<MeetingCreateResponse> =>
-    apiRequest<MeetingCreateResponse>('/api/meetings/', {
+    apiRequest<MeetingCreateResponse>('/api/meetings', {
       method: 'POST',
       body: JSON.stringify({
         ...req,
@@ -1037,5 +1043,101 @@ export const documentsApi = {
     const queryString = queryParams.toString();
     const url = `/api/documents/knowledge-base/${entityType}/${entityId}${queryString ? `?${queryString}` : ''}`;
     return apiRequest<DocumentMetadata[]>(url);
+  },
+};
+
+// ── Joplin Integration API ────────────────────────────────────────────────────
+
+export const joplinApi = {
+  /** Check whether the backend can reach the Joplin REST API. */
+  status: (): Promise<{ connected: boolean; joplin_response?: string; error?: string }> =>
+    apiRequest('/api/joplin/status'),
+
+  /** List all Joplin notebooks. */
+  listNotebooks: (): Promise<Array<{ id: string; title: string; parent_id?: string }>> =>
+    apiRequest('/api/joplin/notebooks'),
+
+  /** List all Joplin tags. */
+  listTags: (): Promise<Array<{ id: string; title: string }>> =>
+    apiRequest('/api/joplin/tags'),
+
+  /** List notes with optional filtering. */
+  listNotes: (params?: {
+    notebookId?: string;
+    tagId?: string;
+    search?: string;
+    page?: number;
+    limit?: number;
+  }): Promise<{ items: Array<{ id: string; title: string; body?: string; updated_time?: number }>; has_more: boolean; page: number }> => {
+    const qs = new URLSearchParams();
+    if (params?.notebookId) qs.append('notebook_id', params.notebookId);
+    if (params?.tagId) qs.append('tag_id', params.tagId);
+    if (params?.search) qs.append('search', params.search);
+    if (params?.page) qs.append('page', String(params.page));
+    if (params?.limit) qs.append('limit', String(params.limit));
+    const q = qs.toString();
+    return apiRequest(`/api/joplin/notes${q ? `?${q}` : ''}`);
+  },
+
+  /** Fetch a note's raw content — no AI processing. */
+  getNote: (noteId: string): Promise<{
+    note: { id: string; title: string; body: string; updated_time?: number };
+  }> => apiRequest(`/api/joplin/notes/${noteId}`),
+
+  /** Run LLM extraction on a note — does NOT save anything. */
+  extractNote: (noteId: string): Promise<{
+    note: { id: string; title: string; body: string };
+    extracted: {
+      action_items: Array<{ title: string; description?: string; priority?: string; task_type?: string }>;
+      opportunities: Array<{ title: string; description?: string; organisation?: string; estimated_value?: number | null; probability?: number | null }>;
+      participants: string[];
+      follow_up_date: string | null;
+    };
+  }> => apiRequest(`/api/joplin/notes/${noteId}/extract`, { method: 'POST' }),
+
+  /** Sync a note to the CRM — creates Tasks + Opportunities, deduplicates. */
+  syncNote: (
+    noteId: string,
+    opts?: { fundraisingId?: string; contactId?: string; meetingId?: string }
+  ): Promise<{
+    skipped?: boolean;
+    reason?: string;
+    note_title?: string;
+    tasks_created?: number;
+    opportunities_created?: number;
+    task_ids?: string[];
+    opportunity_ids?: string[];
+    last_synced_at?: string;
+  }> =>
+    apiRequest(`/api/joplin/sync/${noteId}`, {
+      method: 'POST',
+      body: JSON.stringify({
+        fundraising_id: opts?.fundraisingId ?? null,
+        contact_id: opts?.contactId ?? null,
+        meeting_id: opts?.meetingId ?? null,
+      }),
+    }),
+
+  /** List previously synced notes for a campaign, meeting, or contact. */
+  listSyncedNotes: (opts: { fundraisingId?: string; meetingId?: string; contactId?: string }): Promise<Array<{
+    note_id: string;
+    note_title: string;
+    last_synced_at: string;
+    fundraising_id: string | null;
+    meeting_id: string | null;
+    contact_id: string | null;
+    tasks_created: number;
+    opportunities_created: number;
+    task_ids: string[];
+    opportunity_ids: string[];
+    audio_url: string | null;
+    infographic_url: string | null;
+    has_body: boolean;
+  }>> => {
+    const qs = new URLSearchParams();
+    if (opts.fundraisingId) qs.append('fundraising_id', opts.fundraisingId);
+    if (opts.meetingId) qs.append('meeting_id', opts.meetingId);
+    if (opts.contactId) qs.append('contact_id', opts.contactId);
+    return apiRequest(`/api/joplin/synced-notes?${qs.toString()}`);
   },
 };

@@ -51,7 +51,7 @@ class TaskUpdate(BaseModel):
         # Allow arbitrary types to pass validation
         arbitrary_types_allowed = True
 
-@task_router.post("/", response_model=dict)
+@task_router.post("", response_model=dict)
 async def create_task(task_data: TaskCreate):
     """Create a new task"""
     # Convert frontend values to backend enum values
@@ -104,7 +104,7 @@ async def create_task(task_data: TaskCreate):
     await task.insert()
     return {"message": "Task created successfully", "id": str(task.id)}
 
-@task_router.get("/", response_model=List[dict])
+@task_router.get("", response_model=List[dict])
 async def get_all_tasks(
     skip: int = Query(0, ge=0)
 ):

@@ -41,6 +41,8 @@ services:
         condition: service_healthy
     ports:
       - "${BACKEND_PORT:-8001}:8001"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - appnet
 

@@ -23,14 +23,14 @@ class TrackerUpdate(BaseModel):
     data: Optional[Dict[str, Any]] = None
     metadata: Optional[Dict[str, Any]] = None
 
-@tracker_router.post("/", response_model=dict)
+@tracker_router.post("", response_model=dict)
 async def create_tracker_entry(tracker_data: TrackerCreate):
     """Create a new tracker entry"""
     tracker = Tracker(**tracker_data.dict())
     await tracker.insert()
     return {"message": "Tracker entry created successfully", "id": str(tracker.id)}
 
-@tracker_router.get("/", response_model=List[dict])
+@tracker_router.get("", response_model=List[dict])
 async def get_all_tracker_entries(
     skip: int = Query(0, ge=0)
 ):

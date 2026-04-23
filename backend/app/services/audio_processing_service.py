@@ -17,16 +17,47 @@ from app.models.meeting import Meeting, AudioProcessingStatus
 class AudioProcessingService:
     """Service for processing audio recordings with AI"""
 
-    def __init__(self, api_key: Optional[str] = None):
-        # Allow per-request override via provided api_key; fallback to env var
-        effective_key = api_key or os.getenv("OPENAI_API_KEY")
-        if not effective_key:
-            # Defer error until first API call to allow endpoints to validate
-            pass
-        self.openai_client = openai.OpenAI(api_key=effective_key) if effective_key else openai.OpenAI()
+    def __init__(
+        self,
+        openai_key: Optional[str] = None,
+        openrouter_key: Optional[str] = None,
+        claude_key: Optional[str] = None,
+    ):
+        from app.utils.ai_provider import resolve_chat_provider
+
+        # Chat completions provider: openai → openrouter → claude → env fallback
+        self.chat_provider = resolve_chat_provider(
+            openai_key=openai_key,
+            openrouter_key=openrouter_key,
+            claude_key=claude_key,
+        )
+
+        # Store raw keys for async multimodal operations (transcription, etc.)
+        self._openai_key = openai_key or os.getenv("OPENAI_API_KEY")
+        self._openrouter_key = openrouter_key
+        self._claude_key = claude_key
+
+        # Sync OpenAI client for Whisper, DALL-E, TTS (OpenAI-only features)
+        self.openai_client = openai.OpenAI(api_key=self._openai_key) if self._openai_key else None
+
         self.audio_dir = "uploads/audio"
         self.images_dir = "uploads/images"
         self.dubs_dir = "uploads/dubs"
+
+    def _require_chat(self) -> None:
+        """Raise if no chat provider is configured."""
+        if not self.chat_provider:
+            raise RuntimeError(
+                "No AI API key configured. Add an OpenAI, OpenRouter, or Claude key in Account Settings → AI Keys."
+            )
+
+    def _require_openai(self, feature: str = "this feature") -> None:
+        """Raise if no OpenAI client is available (needed for DALL-E / TTS)."""
+        if not self.openai_client:
+            raise RuntimeError(
+                f"OpenAI API key required for {feature}. "
+                "Add an OpenAI key in Account Settings → AI Keys."
+            )
 
     async def process_audio_recording(self, meeting_id: str) -> Dict:
         """
@@ -89,23 +120,120 @@ class AudioProcessingService:
             raise Exception(f"Audio processing failed: {str(e)}")
 
     async def _transcribe_audio(self, audio_path: str) -> str:
-        """Transcribe audio file using OpenAI Whisper"""
+        """Transcribe audio using best available provider.
 
+        Priority:
+          1. OpenAI Whisper  (highest quality)
+          2. OpenRouter multimodal model  (e.g. Gemini Flash — needs audio-capable model)
+          3. Claude via Anthropic API  (audio input support)
+        """
         if not os.path.exists(audio_path):
             raise FileNotFoundError(f"Audio file not found: {audio_path}")
 
-        # Validate API key availability
-        if not getattr(self.openai_client, "api_key", None) and not os.getenv("OPENAI_API_KEY"):
-            raise RuntimeError("OpenAI API key not configured. Provide X-OpenAI-API-Key header or set OPENAI_API_KEY.")
+        if self._openai_key:
+            with open(audio_path, "rb") as audio_file:
+                transcript = self.openai_client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    response_format="text",
+                )
+            return transcript.strip()
 
-        with open(audio_path, "rb") as audio_file:
-            transcript = self.openai_client.audio.transcriptions.create(
-                model="whisper-1",
-                file=audio_file,
-                response_format="text"
-            )
+        # Encode audio as base64 for multimodal providers
+        import base64
+        import mimetypes
 
-        return transcript.strip()
+        with open(audio_path, "rb") as f:
+            audio_bytes = f.read()
+        audio_b64 = base64.b64encode(audio_bytes).decode()
+
+        raw_mime = mimetypes.guess_type(audio_path)[0] or "audio/mpeg"
+        # Map to formats accepted by multimodal APIs
+        ext = os.path.splitext(audio_path)[1].lower().lstrip(".")
+        fmt_map = {"wav": "wav", "mp3": "mp3", "mpeg": "mp3", "ogg": "ogg", "webm": "webm", "m4a": "mp4"}
+        audio_fmt = fmt_map.get(ext, "mp3")
+        mime_type = f"audio/{audio_fmt}"
+
+        if self._openrouter_key:
+            return await self._transcribe_via_openrouter(audio_b64, mime_type)
+
+        if self._claude_key:
+            return await self._transcribe_via_claude(audio_b64, mime_type)
+
+        raise RuntimeError(
+            "No AI API key configured for audio transcription. "
+            "Add an OpenAI, OpenRouter, or Claude key in Account Settings → AI Keys."
+        )
+
+    async def _transcribe_via_openrouter(self, audio_b64: str, mime_type: str) -> str:
+        """Transcribe audio using a multimodal model via OpenRouter.
+
+        Uses a Gemini model by default since Gemini supports audio input.
+        Override by setting OPENROUTER_AUDIO_MODEL env var.
+        """
+        from openai import AsyncOpenAI
+
+        audio_model = os.getenv("OPENROUTER_AUDIO_MODEL", "google/gemini-2.0-flash-001")
+        client = AsyncOpenAI(
+            api_key=self._openrouter_key,
+            base_url="https://openrouter.ai/api/v1",
+        )
+        audio_format = mime_type.split("/")[1]  # e.g. "mp3"
+        resp = await client.chat.completions.create(
+            model=audio_model,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "input_audio",
+                            "input_audio": {"data": audio_b64, "format": audio_format},
+                        },
+                        {
+                            "type": "text",
+                            "text": (
+                                "Transcribe this audio verbatim and accurately. "
+                                "Output only the transcript text with no commentary, labels, or formatting."
+                            ),
+                        },
+                    ],
+                }
+            ],
+        )
+        return resp.choices[0].message.content.strip()
+
+    async def _transcribe_via_claude(self, audio_b64: str, mime_type: str) -> str:
+        """Transcribe audio using Anthropic Claude with audio input support."""
+        import anthropic
+
+        client = anthropic.AsyncAnthropic(api_key=self._claude_key)
+        resp = await client.messages.create(
+            model="claude-opus-4-5",
+            max_tokens=4096,
+            messages=[
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "audio",
+                            "source": {
+                                "type": "base64",
+                                "media_type": mime_type,
+                                "data": audio_b64,
+                            },
+                        },
+                        {
+                            "type": "text",
+                            "text": (
+                                "Transcribe this audio verbatim and accurately. "
+                                "Output only the transcript text with no commentary, labels, or formatting."
+                            ),
+                        },
+                    ],
+                }
+            ],
+        )
+        return resp.content[0].text.strip()
 
     async def _analyze_transcript(self, transcript: str) -> Dict:
         """Analyze transcript using GPT for insights and tasks"""
@@ -132,23 +260,16 @@ class AudioProcessingService:
         Focus on investment/fundraising context. Be specific and actionable.
         """
 
-        # Validate API key availability
-        if not getattr(self.openai_client, "api_key", None) and not os.getenv("OPENAI_API_KEY"):
-            raise RuntimeError("OpenAI API key not configured. Provide X-OpenAI-API-Key header or set OPENAI_API_KEY.")
-
-        response = self.openai_client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "You are an expert business analyst specializing in investment meetings. Provide structured, actionable insights from meeting transcripts."},
-                {"role": "user", "content": prompt}
-            ],
-            temperature=0.3,
-            max_tokens=1000
-        )
+        self._require_chat()
 
         # Parse JSON response
         try:
-            analysis_text = response.choices[0].message.content.strip()
+            analysis_text = self.chat_provider.complete(
+                system="You are an expert business analyst specializing in investment meetings. Provide structured, actionable insights from meeting transcripts.",
+                user=prompt,
+                temperature=0.3,
+                max_tokens=1000,
+            )
             # Remove markdown code blocks if present
             analysis_text = re.sub(r'```json\s*|\s*```', '', analysis_text)
             analysis = json.loads(analysis_text)
@@ -183,21 +304,14 @@ class AudioProcessingService:
         Provide a detailed, actionable response.
         """
 
-        # Validate API key availability
-        if not getattr(self.openai_client, "api_key", None) and not os.getenv("OPENAI_API_KEY"):
-            raise RuntimeError("OpenAI API key not configured. Provide X-OpenAI-API-Key header or set OPENAI_API_KEY.")
+        self._require_chat()
 
-        response = self.openai_client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "You are an expert business consultant providing insights from meeting transcripts."},
-                {"role": "user", "content": prompt}
-            ],
+        ai_response = self.chat_provider.complete(
+            system="You are an expert business consultant providing insights from meeting transcripts.",
+            user=prompt,
             temperature=0.7,
-            max_tokens=1500
+            max_tokens=1500,
         )
-
-        ai_response = response.choices[0].message.content.strip()
 
         # Save conversation to database
         if user_id:
@@ -214,8 +328,8 @@ class AudioProcessingService:
                     "meeting_date": meeting.scheduled_date.isoformat() if meeting.scheduled_date else None
                 },
                 asked_by=user_id,
-                model_used="gpt-4",
-                tokens_used=getattr(response, 'usage', {}).get('total_tokens')
+                model_used=f"{self.chat_provider.provider}/{self.chat_provider.model}",
+                tokens_used=None
             )
             await conversation.insert()
 
@@ -249,9 +363,7 @@ class AudioProcessingService:
             f"Instruction: {description}. Use a white background and minimal color palette, include concise labels."
         )
 
-        # Validate API key availability
-        if not getattr(self.openai_client, "api_key", None) and not os.getenv("OPENAI_API_KEY"):
-            raise RuntimeError("OpenAI API key not configured. Provide X-OpenAI-API-Key header or set OPENAI_API_KEY.")
+        self._require_openai("image generation (DALL-E)")
 
         # Generate image using OpenAI Images API (DALL·E)
         img = self.openai_client.images.generate(
@@ -335,21 +447,14 @@ class AudioProcessingService:
         Provide a clear, concise answer grounded only in the provided context. If information is missing, state what is missing.
         """
 
-        # Validate API key availability
-        if not getattr(self.openai_client, "api_key", None) and not os.getenv("OPENAI_API_KEY"):
-            raise RuntimeError("OpenAI API key not configured. Provide X-OpenAI-API-Key header or set OPENAI_API_KEY.")
+        self._require_chat()
 
-        response = self.openai_client.chat.completions.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "You synthesize insights across multiple related meetings for fundraising."},
-                {"role": "user", "content": prompt}
-            ],
+        ai_response = self.chat_provider.complete(
+            system="You synthesize insights across multiple related meetings for fundraising.",
+            user=prompt,
             temperature=0.4,
-            max_tokens=1200
+            max_tokens=1200,
         )
-
-        ai_response = response.choices[0].message.content.strip()
 
         # Save conversation to database
         if user_id:
@@ -366,8 +471,8 @@ class AudioProcessingService:
                     "fundraising_organisation": meetings[0].fundraising_id if meetings else None
                 },
                 asked_by=user_id,
-                model_used="gpt-4",
-                tokens_used=getattr(response, 'usage', {}).get('total_tokens')
+                model_used=f"{self.chat_provider.provider}/{self.chat_provider.model}",
+                tokens_used=None
             )
             await conversation.insert()
 
@@ -389,21 +494,14 @@ class AudioProcessingService:
         {transcript}
         """
 
-        # Validate API key availability
-        if not getattr(self.openai_client, "api_key", None) and not os.getenv("OPENAI_API_KEY"):
-            raise RuntimeError("OpenAI API key not configured. Provide X-OpenAI-API-Key header or set OPENAI_API_KEY.")
+        self._require_chat()
 
-        response = self.openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Extract action items and commitments from meeting transcripts."},
-                {"role": "user", "content": prompt}
-            ],
+        action_items = self.chat_provider.complete(
+            system="Extract action items and commitments from meeting transcripts.",
+            user=prompt,
             temperature=0.2,
-            max_tokens=500
+            max_tokens=500,
         )
-
-        action_items = response.choices[0].message.content.strip()
         # Split into list items
         items = [item.strip('- •123456789. ') for item in action_items.split('\n') if item.strip()]
         return [item for item in items if item]
@@ -421,21 +519,14 @@ class AudioProcessingService:
         Return as a numbered list of specific decisions.
         """
 
-        # Validate API key availability
-        if not getattr(self.openai_client, "api_key", None) and not os.getenv("OPENAI_API_KEY"):
-            raise RuntimeError("OpenAI API key not configured. Provide X-OpenAI-API-Key header or set OPENAI_API_KEY.")
+        self._require_chat()
 
-        response = self.openai_client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": "Identify key decisions and agreements from meeting transcripts."},
-                {"role": "user", "content": prompt}
-            ],
+        decisions = self.chat_provider.complete(
+            system="Identify key decisions and agreements from meeting transcripts.",
+            user=prompt,
             temperature=0.2,
-            max_tokens=500
+            max_tokens=500,
         )
-
-        decisions = response.choices[0].message.content.strip()
         items = [item.strip('- •123456789. ') for item in decisions.split('\n') if item.strip()]
         return [item for item in items if item]
 
@@ -461,39 +552,29 @@ class AudioProcessingService:
         # Quick heuristic: if transcript contains many non-ascii characters, do translation; otherwise still normalize to English
         needs_translation = any(ord(ch) > 127 for ch in transcript[:200])
 
-        # Validate API key availability
-        if not getattr(self.openai_client, "api_key", None) and not os.getenv("OPENAI_API_KEY"):
-            raise RuntimeError("OpenAI API key not configured. Provide X-OpenAI-API-Key header or set OPENAI_API_KEY.")
+        self._require_chat()
+        self._require_openai("audio dubbing (TTS)")
 
         if needs_translation:
             translate_prompt = (
                 "Translate the following transcript into clear, fluent English. Preserve meaning and names.\n\n" + transcript
             )
-            tr = self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are a professional translator to English."},
-                    {"role": "user", "content": translate_prompt},
-                ],
+            english_text = self.chat_provider.complete(
+                system="You are a professional translator to English.",
+                user=translate_prompt,
                 temperature=0.2,
                 max_tokens=6000,
             )
-            english_text = tr.choices[0].message.content.strip()
         else:
-            # Optionally ask model to clean up English for TTS clarity
             cleanup_prompt = (
                 "Rewrite this transcript into concise, clear English suitable for voiceover, without changing factual content.\n\n" + transcript
             )
-            tr = self.openai_client.chat.completions.create(
-                model="gpt-4o-mini",
-                messages=[
-                    {"role": "system", "content": "You are an editor preparing text for voiceover."},
-                    {"role": "user", "content": cleanup_prompt},
-                ],
+            english_text = self.chat_provider.complete(
+                system="You are an editor preparing text for voiceover.",
+                user=cleanup_prompt,
                 temperature=0.3,
                 max_tokens=6000,
             )
-            english_text = tr.choices[0].message.content.strip()
 
         # 2) Text-to-Speech using OpenAI TTS
         # Some SDKs expose client.audio.speech for TTS, or use responses with audio. Use latest TTS API route.

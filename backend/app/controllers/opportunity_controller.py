@@ -35,14 +35,14 @@ class OpportunityUpdate(BaseModel):
     assigned_to: Optional[str] = None
     target_close_date: Optional[str] = None
 
-@opportunity_router.post("/", response_model=dict)
+@opportunity_router.post("", response_model=dict)
 async def create_opportunity(opportunity_data: OpportunityCreate):
     """Create a new investment opportunity"""
     opportunity = Opportunity(**opportunity_data.dict())
     await opportunity.insert()
     return {"message": "Opportunity created successfully", "id": str(opportunity.id)}
 
-@opportunity_router.get("/", response_model=List[dict])
+@opportunity_router.get("", response_model=List[dict])
 async def get_all_opportunities(
     skip: int = Query(0, ge=0)
 ):

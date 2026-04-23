@@ -32,7 +32,8 @@ class Opportunity(Document):
     description: Optional[str] = Field(None, description="Detailed description")
     organisation: str = Field(..., description="Target organization")
     contact_id: Optional[str] = Field(None, description="Related contact ID")
-    
+    meeting_id: Optional[str] = Field(None, description="Related meeting ID")
+
     # Financial details
     estimated_value: Optional[float] = Field(None, description="Estimated value in INR Crores")
     probability: Optional[float] = Field(None, ge=0, le=100, description="Success probability (0-100%)")

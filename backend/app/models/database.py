@@ -59,7 +59,8 @@ async def init_db():
         from app.models.role import Role, Permission
         from app.models.ai_conversation import AIConversation
         from app.models.document import DocumentMetadata
-        
+        from app.models.joplin import JoplinSyncRecord
+
         # Initialize Beanie with document models
         await init_beanie(
             database=db.database,
@@ -75,7 +76,8 @@ async def init_db():
                 Role,
                 Permission,
                 AIConversation,
-                DocumentMetadata
+                DocumentMetadata,
+                JoplinSyncRecord,
             ]
         )
         

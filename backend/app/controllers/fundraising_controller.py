@@ -83,7 +83,7 @@ class FundraisingUpdate(BaseModel):
     current_status: Optional[str] = None
     notes: Optional[str] = None
 
-@fundraising_router.post("/", response_model=dict)
+@fundraising_router.post("", response_model=dict)
 async def create_fundraising_campaign(campaign_data: FundraisingCreate):
     """Create a new fundraising campaign"""
     try:
@@ -104,7 +104,7 @@ async def create_fundraising_campaign(campaign_data: FundraisingCreate):
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error creating campaign: {str(e)}")
 
-@fundraising_router.get("/", response_model=List[FundraisingResponse])
+@fundraising_router.get("", response_model=List[FundraisingResponse])
 async def get_all_campaigns(
     skip: int = Query(0, ge=0),
     status: Optional[FundraisingStatus] = Query(None, description="Filter by status"),
@@ -234,7 +234,7 @@ async def delete_campaign(campaign_id: str):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error deleting campaign: {str(e)}")
 
-@fundraising_router.post("/", response_model=dict)
+@fundraising_router.post("", response_model=dict)
 async def create_campaign(campaign_data: FundraisingCreate):
     """Create a new fundraising campaign"""
     try:

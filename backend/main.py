@@ -19,6 +19,7 @@ from app.controllers.meeting_controller import meeting_router
 from app.controllers.role_controller import role_router
 from app.controllers.analytics_controller import router as analytics_router
 from app.controllers.document_controller import document_router
+from app.controllers.joplin_controller import joplin_router
 from app.models.database import init_db, close_mongo_connection
 from app.utils.config import get_settings
 
@@ -37,7 +38,8 @@ app = FastAPI(
     title="Niveshya Lead Management System",
     description="Investment tracking and lead management system with SOLID principles and MongoDB",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    redirect_slashes=False,
 )
 
 # CORS middleware
@@ -62,6 +64,7 @@ app.include_router(meeting_router, prefix="/api/meetings", tags=["meetings"])
 app.include_router(role_router, tags=["roles"])
 app.include_router(analytics_router, prefix="/api", tags=["analytics"])
 app.include_router(document_router, prefix="/api/documents", tags=["documents"])
+app.include_router(joplin_router, prefix="/api/joplin", tags=["joplin"])
 
 @app.get("/")
 async def root():

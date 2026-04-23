@@ -5,7 +5,7 @@ Meeting Controller - Handles meeting management and audio recording functionalit
 import os
 import uuid
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, status, Header, Response
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File, Form, status, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from datetime import datetime
@@ -74,7 +74,7 @@ class MeetingUpdateRequest(BaseModel):
     tnifmc_representatives: Optional[List[str]] = None  # legacy
     niveshya_representatives: Optional[List[str]] = None
 
-@meeting_router.post("/", response_model=dict)
+@meeting_router.post("", response_model=dict)
 async def create_meeting(
     meeting_data: MeetingCreateRequest,
     current_user: User = Depends(get_current_user)
@@ -375,7 +375,6 @@ async def delete_meeting(
 @meeting_router.post("/{meeting_id}/process-audio", response_model=dict)
 async def process_meeting_audio(
     meeting_id: str,
-    x_openai_api_key: Optional[str] = Header(default=None, alias="X-OpenAI-API-Key"),
     force: bool = False,
     current_user: User = Depends(get_current_user)
 ):
@@ -388,7 +387,11 @@ async def process_meeting_audio(
     if not meeting.audio_recording:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No audio recording to process")
 
-    service = AudioProcessingService(api_key=x_openai_api_key)
+    service = AudioProcessingService(
+        openai_key=current_user.openai_api_key or None,
+        openrouter_key=current_user.openrouter_api_key or None,
+        claude_key=current_user.claude_api_key or None,
+    )
     try:
         result = await service.process_audio_recording(meeting_id)
         return {"message": "Audio processed successfully", **result}
@@ -430,12 +433,15 @@ class AutoDubRequest(BaseModel):
 async def generate_custom_prompt(
     meeting_id: str,
     request: CustomPromptRequest,
-    x_openai_api_key: Optional[str] = Header(default=None, alias="X-OpenAI-API-Key"),
     current_user: User = Depends(get_current_user)
 ):
     """Run a custom prompt against the meeting transcript"""
 
-    service = AudioProcessingService(api_key=x_openai_api_key)
+    service = AudioProcessingService(
+        openai_key=current_user.openai_api_key or None,
+        openrouter_key=current_user.openrouter_api_key or None,
+        claude_key=current_user.claude_api_key or None,
+    )
     try:
         result = await service.generate_meeting_insights(meeting_id, request.prompt, str(current_user.id))
         return {"message": "Prompt processed", **result}
@@ -446,7 +452,6 @@ async def generate_custom_prompt(
 async def generate_infographic(
     meeting_id: str,
     request: InfographicRequest,
-    x_openai_api_key: Optional[str] = Header(default=None, alias="X-OpenAI-API-Key"),
     current_user: User = Depends(get_current_user)
 ):
     """Generate and persist an infographic image for a meeting using AI, saved on local disk."""
@@ -455,7 +460,11 @@ async def generate_infographic(
     if not meeting:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
 
-    service = AudioProcessingService(api_key=x_openai_api_key)
+    service = AudioProcessingService(
+        openai_key=current_user.openai_api_key or None,
+        openrouter_key=current_user.openrouter_api_key or None,
+        claude_key=current_user.claude_api_key or None,
+    )
     try:
         result = await service.generate_infographic_for_meeting(meeting_id, request.description, IMAGES_DIR)
         # Persist metadata on meeting
@@ -492,7 +501,6 @@ async def get_infographic(
 async def create_autodub(
     meeting_id: str,
     request: AutoDubRequest,
-    x_openai_api_key: Optional[str] = Header(default=None, alias="X-OpenAI-API-Key"),
     current_user: User = Depends(get_current_user)
 ):
     """Create an English dub from the meeting's transcript (auto-translate if needed) and save as audio."""
@@ -500,7 +508,11 @@ async def create_autodub(
     if not meeting:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Meeting not found")
 
-    service = AudioProcessingService(api_key=x_openai_api_key)
+    service = AudioProcessingService(
+        openai_key=current_user.openai_api_key or None,
+        openrouter_key=current_user.openrouter_api_key or None,
+        claude_key=current_user.claude_api_key or None,
+    )
     try:
         result = await service.auto_dub_meeting(meeting_id, target_voice=request.voice or "alloy", audio_format=request.format or "mp3")
         # Persist already handled in service (filename/text/timestamps)
@@ -531,7 +543,6 @@ async def get_autodub(
 async def generate_campaign_prompt(
     fundraising_id: str,
     request: CustomPromptRequest,
-    x_openai_api_key: Optional[str] = Header(default=None, alias="X-OpenAI-API-Key"),
     current_user: User = Depends(get_current_user)
 ):
     """Run a custom prompt across all meetings for a fundraising campaign.
@@ -546,7 +557,11 @@ async def generate_campaign_prompt(
             detail="Fundraising campaign not found"
         )
 
-    service = AudioProcessingService(api_key=x_openai_api_key)
+    service = AudioProcessingService(
+        openai_key=current_user.openai_api_key or None,
+        openrouter_key=current_user.openrouter_api_key or None,
+        claude_key=current_user.claude_api_key or None,
+    )
     try:
         result = await service.generate_campaign_insights(fundraising_id, request.prompt, request.meeting_ids, str(current_user.id))
         return {"message": "Prompt processed", **result}

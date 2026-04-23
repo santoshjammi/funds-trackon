@@ -1,21 +1,21 @@
 #!/bin/bash
 
-# Stop script for funds-trackon development environment
-# This script stops and removes the Docker containers
+# Stop script — kills backend and frontend processes started by start.sh
 
-echo "Stopping funds-trackon development environment..."
+echo "Stopping funds-trackon services..."
 
-echo ""
-echo "TIP: If you have unsaved data changes, snapshot the DB first:"
-echo "     ./docker_setup.sh --snapshot"
-echo ""
+kill_port() {
+  local pid
+  pid=$(lsof -ti :"$1" 2>/dev/null || true)
+  if [ -n "$pid" ]; then
+    kill "$pid" 2>/dev/null && echo "  ✓ Stopped process on port $1" || true
+  else
+    echo "  – Nothing running on port $1"
+  fi
+}
 
-# Stop and remove containers, networks
-docker compose down
+kill_port 8001
+kill_port 3002
+kill_port 3000
 
-# Optional: Remove volumes (uncomment if you want to reset data)
-# docker compose down -v
-
-echo "Services stopped."
-echo ""
-echo "To start again: ./docker_setup.sh"
+echo "Done."

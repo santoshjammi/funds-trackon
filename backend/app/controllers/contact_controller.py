@@ -39,7 +39,7 @@ class ContactUpdate(BaseModel):
     sub_location: Optional[str] = None
     notes_comments: Optional[str] = None
 
-@contact_router.post("/", response_model=Contact)
+@contact_router.post("", response_model=Contact)
 async def create_contact(contact_data: ContactCreate):
     """Create a new contact"""
     try:
@@ -49,7 +49,7 @@ async def create_contact(contact_data: ContactCreate):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@contact_router.get("/", response_model=List[Contact])
+@contact_router.get("", response_model=List[Contact])
 async def get_contacts(
     skip: int = Query(0, ge=0),
     organisation: Optional[str] = None
