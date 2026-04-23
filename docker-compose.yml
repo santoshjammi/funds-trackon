@@ -9,7 +9,6 @@ services:
       - "${MONGO_PORT:-27019}:27017"
     volumes:
       - mongo_data:/data/db
-      - ./mongo-init:/docker-entrypoint-initdb.d:ro
     environment:
       - MONGO_INITDB_DATABASE=${DATABASE_NAME}
     healthcheck:
@@ -34,6 +33,7 @@ services:
       - ENVIRONMENT=production
       - DEBUG=False
       - PORT=8001
+      - JOPLIN_BASE_URL=http://host.docker.internal:41184
     volumes:
       - uploads:/app/uploads
     depends_on:

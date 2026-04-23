@@ -25,7 +25,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onUserUpdate, onError }
 
   // Joplin settings state
   const [joplinForm, setJoplinForm] = useState({
-    joplin_base_url: user.joplin_base_url || 'http://localhost:41184',
+    joplin_base_url: user.joplin_base_url || 'http://host.docker.internal:41184',
     joplin_api_token: user.joplin_api_token || '',
     joplin_master_password: user.joplin_master_password || '',
   });
@@ -326,7 +326,7 @@ const UserProfile: React.FC<UserProfileProps> = ({ user, onUserUpdate, onError }
             <Label htmlFor="joplin_base_url">Joplin API URL</Label>
             <Input
               id="joplin_base_url"
-              placeholder="http://localhost:41184"
+              placeholder="http://host.docker.internal:41184"
               value={joplinForm.joplin_base_url}
               onChange={(e) => setJoplinForm(f => ({ ...f, joplin_base_url: e.target.value }))}
             />
