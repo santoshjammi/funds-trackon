@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Krishna Chaitanya — Investor, Fund Manager, CEO</title>
+  <meta name="description" content="A polished personal website for Krishna Chaitanya, highlighting experience across fund management, emerging markets, infrastructure, energy, renewables, transportation, and real assets." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root, [data-theme="light"] {
+      --brand: #7132f5;
+      --brand-dark: #5741d8;
+      --brand-deep: #5b1ecf;
+      --brand-soft: rgba(133,91,251,0.16);
+      --text: #101114;
+      --text-muted: #686b82;
+      --text-soft: #9497a9;
+      --bg: #ffffff;
+      --surface: #fbfbfe;
+      --surface-2: #f5f6fb;
+      --border: #dedee5;
+      --success-bg: rgba(20,158,97,0.16);
+      --success-text: #026b3f;
+      --shadow: rgba(0,0,0,0.03) 0px 4px 24px;
+      --shadow-micro: rgba(16,24,40,0.04) 0px 1px 4px;
+      --font-display: 'IBM Plex Sans', Helvetica, Arial, sans-serif;
+      --font-body: 'IBM Plex Sans', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 12px;
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-10: 40px;
+      --space-12: 48px;
+      --space-16: 64px;
+      --max: 1200px;
+    }
+
+    [data-theme="dark"] {
+      --text: #f5f7ff;
+      --text-muted: #b3b6c7;
+      --text-soft: #8b90aa;
+      --bg: #0d0e12;
+      --surface: #151720;
+      --surface-2: #1c1f2b;
+      --border: rgba(222,222,229,0.12);
+      --shadow: rgba(0,0,0,0.28) 0px 12px 32px;
+      --shadow-micro: rgba(0,0,0,0.18) 0px 1px 4px;
+      --brand-soft: rgba(133,91,251,0.18);
+      --success-bg: rgba(20,158,97,0.18);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--font-body);
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.55;
+    }
+    a { color: inherit; text-decoration: none; }
+    img, svg { display: block; max-width: 100%; }
+    .skip-link {
+      position: absolute; left: -999px; top: var(--space-3);
+      background: var(--brand); color: #fff; padding: 10px 14px; border-radius: var(--radius-lg);
+      z-index: 100;
+    }
+    .skip-link:focus { left: var(--space-3); }
+    .container { width: min(calc(100% - 32px), var(--max)); margin: 0 auto; }
+
+    .site-header {
+      position: sticky; top: 0; z-index: 40;
+      -webkit-backdrop-filter: blur(16px);
+      backdrop-filter: blur(16px);
+      background: color-mix(in srgb, var(--bg) 82%, transparent);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 0;
+      gap: var(--space-4);
+    }
+    .brand {
+      display: flex; align-items: center; gap: 10px; font-weight: 700; letter-spacing: -0.02em;
+    }
+    .brand-mark {
+      width: 36px; height: 36px; border-radius: 10px;
+      background: linear-gradient(180deg, var(--brand), var(--brand-dark));
+      display: grid; place-items: center; color: white;
+      box-shadow: var(--shadow-micro);
+    }
+    .nav-links {
+      display: flex; align-items: center; gap: var(--space-5);
+      font-size: 14px; color: var(--text-muted);
+    }
+    .nav-actions { display: flex; align-items: center; gap: var(--space-3); }
+
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      min-height: 44px; padding: 13px 16px; border-radius: 12px; font-size: 16px; font-weight: 600;
+      border: 1px solid transparent; transition: .2s ease;
+    }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-primary:hover { background: var(--brand-dark); }
+    .btn-outline { background: var(--bg); color: var(--brand-dark); border-color: var(--brand-dark); }
+    .btn-soft { background: var(--brand-soft); color: var(--brand); padding: 10px 14px; }
+    .btn-white { background: #fff; color: var(--text); box-shadow: var(--shadow); }
+    .theme-toggle {
+      width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text);
+    }
+
+    .hero {
+      padding: 72px 0 36px;
+      background:
+        radial-gradient(circle at top right, rgba(113,50,245,0.12), transparent 30%),
+        linear-gradient(180deg, var(--bg), var(--surface));
+    }
+    .hero-grid {
+      display: grid; grid-template-columns: 1.2fr 0.8fr; gap: var(--space-8); align-items: center;
+    }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--brand-soft); color: var(--brand);
+      padding: 8px 12px; border-radius: 12px; font-size: 14px; font-weight: 600;
+      margin-bottom: var(--space-4);
+    }
+    h1, h2, h3 { font-family: var(--font-display); letter-spacing: -0.03em; margin: 0; }
+    h1 { font-size: clamp(40px, 5vw, 58px); line-height: 1.08; font-weight: 700; max-width: 12ch; }
+    .hero p {
+      font-size: 18px; color: var(--text-muted); margin: var(--space-4) 0 var(--space-6); max-width: 62ch;
+    }
+    .hero-actions, .hero-metrics { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+    .hero-metrics { margin-top: var(--space-6); }
+    .metric-pill {
+      padding: 10px 14px; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; box-shadow: var(--shadow-micro); font-size: 14px; color: var(--text-muted);
+    }
+    .hero-card {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: var(--space-6);
+      box-shadow: var(--shadow);
+    }
+    .hero-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); }
+    .avatar {
+      width: 68px; height: 68px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand), var(--brand-deep));
+      color: white; display: grid; place-items: center; font-size: 22px; font-weight: 700;
+    }
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px;
+      border-radius: 6px; background: var(--success-bg); color: var(--success-text);
+      font-size: 12px; font-weight: 700;
+    }
+    .card-list { display: grid; gap: var(--space-4); margin-top: var(--space-5); }
+    .mini-card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: var(--space-4);
+    }
+    .mini-card strong { display: block; font-size: 15px; margin-bottom: 6px; }
+    .mini-card span { color: var(--text-muted); font-size: 14px; }
+
+    section { padding: 36px 0; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-6); }
+    .section-head h2 { font-size: clamp(28px, 3vw, 38px); line-height: 1.12; }
+    .section-head p { max-width: 58ch; color: var(--text-muted); margin: 0; }
+
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-5); }
+    .card {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: var(--space-6);
+      box-shadow: var(--shadow-micro);
+    }
+    .card h3 { font-size: 22px; margin-bottom: 10px; }
+    .card p { margin: 0; color: var(--text-muted); }
+    .tag-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: var(--space-4); }
+    .tag {
+      padding: 8px 12px; border-radius: 8px; background: rgba(104,107,130,0.12); color: #484b5e; font-size: 13px; font-weight: 600;
+    }
+
+    .timeline { display: grid; gap: var(--space-4); }
+    .timeline-item {
+      display: grid; grid-template-columns: 180px 1fr; gap: var(--space-5);
+      background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: var(--space-5);
+    }
+    .timeline-date { color: var(--text-soft); font-size: 14px; font-weight: 600; }
+    .timeline-item h3 { font-size: 22px; margin-bottom: 8px; }
+    .timeline-item p { margin: 0 0 12px; color: var(--text-muted); }
+
+    .quote-block {
+      background: linear-gradient(180deg, var(--brand), var(--brand-dark)); color: white;
+      border-radius: 24px; padding: clamp(28px, 5vw, 52px); box-shadow: var(--shadow);
+    }
+    .quote-block p { font-size: clamp(22px, 3vw, 32px); line-height: 1.25; max-width: 26ch; margin: 0 0 16px; }
+    .quote-block span { color: rgba(255,255,255,0.84); }
+
+    .footer {
+      padding: var(--space-10) 0 var(--space-12);
+      border-top: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+    .footer-wrap { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+
+    @media (max-width: 960px) {
+      .hero-grid, .grid-3, .timeline-item { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+      .section-head, .footer-wrap { align-items: flex-start; flex-direction: column; }
+      h1 { max-width: 100%; }
+    }
+
+    @media (max-width: 640px) {
+      .hero { padding-top: 48px; }
+      .container { width: min(calc(100% - 24px), var(--max)); }
+      .hero-card, .card, .timeline-item { padding: var(--space-4); }
+      .brand span:last-child { display: none; }
+      .hero-actions .btn { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="container nav">
+      <a class="brand" href="#top" aria-label="Krishna Chaitanya home">
+        <span class="brand-mark" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+            <path d="M6 18V6h3.2v4.5L14 6h4L12.9 11.7 18.4 18h-4.1L10 13v5H6Z" fill="currentColor"/>
+          </svg>
+        </span>
+        <span>Krishna Chaitanya</span>
+      </a>
+
+      <nav class="nav-links" aria-label="Primary">
+        <a href="#about">About</a>
+        <a href="#expertise">Expertise</a>
+        <a href="#experience">Experience</a>
+        <a href="#contact">Connect</a>
+      </nav>
+
+      <div class="nav-actions">
+        <button class="theme-toggle" data-theme-toggle aria-label="Switch theme">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <a class="btn btn-outline" href="https://www.linkedin.com/in/krishna1710/" target="_blank" rel="noopener noreferrer">LinkedIn</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="container hero-grid">
+        <div>
+          <div class="eyebrow">Investor • Fund Manager • CEO</div>
+          <h1>Building value across emerging markets and real assets.</h1>
+          <p>Krishna Chaitanya is positioned as a senior investment leader with more than 20 years of experience spanning fund management across emerging markets, with exposure to energy, renewables, transportation, and real assets.</p>
+          <div class="hero-actions">
+            <a class="btn btn-primary" href="#contact">Start a conversation</a>
+            <a class="btn btn-soft" href="#experience">View experience</a>
+          </div>
+          <div class="hero-metrics" aria-label="Highlights">
+            <div class="metric-pill">20+ years of experience</div>
+            <div class="metric-pill">Emerging markets focus</div>
+            <div class="metric-pill">Energy to infrastructure sectors</div>
+          </div>
+        </div>
+
+        <aside class="hero-card" aria-label="Profile summary">
+          <div class="hero-card-top">
+            <div style="display:flex; gap:16px; align-items:center;">
+              <div class="avatar" aria-hidden="true">KC</div>
+              <div>
+                <strong style="font-size:22px; display:block; margin-bottom:4px;">Krishna Chaitanya</strong>
+                <span style="color:var(--text-muted);">CEO, Fund Manager & Startup Operator</span>
+              </div>
+            </div>
+            <span class="badge">Available for advisory</span>
+          </div>
+
+          <div class="card-list">
+            <div class="mini-card">
+              <strong>Investment Domain</strong>
+              <span>Emerging markets investing across infrastructure-led sectors.</span>
+            </div>
+            <div class="mini-card">
+              <strong>Sector Exposure</strong>
+              <span>Energy, renewables, transportation, and real assets.</span>
+            </div>
+            <div class="mini-card">
+              <strong>Leadership Lens</strong>
+              <span>Combines capital allocation, operating judgment, and strategic perspective.</span>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <section id="about">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <h2>About</h2>
+          </div>
+          <p>This page is designed as a premium executive profile that turns a concise LinkedIn presence into a polished digital identity suitable for introductions, business outreach, and credibility building.</p>
+        </div>
+        <div class="grid-3">
+          <article class="card">
+            <h3>Strategic investor</h3>
+            <p>Experience is framed around long-horizon investing and portfolio thinking across emerging market opportunities.</p>
+          </article>
+          <article class="card">
+            <h3>Operator mindset</h3>
+            <p>The profile positioning suggests a blend of CEO-level execution and fund-management discipline rather than a purely financial narrative.</p>
+          </article>
+          <article class="card">
+            <h3>Sector depth</h3>
+            <p>His visible profile summary highlights exposure to sectors where capital intensity, regulation, and infrastructure dynamics matter.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="expertise">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <h2>Core expertise</h2>
+          </div>
+          <p>The content architecture below translates the available public profile details into clear website-friendly themes that feel credible and investor-ready.</p>
+        </div>
+        <div class="grid-3">
+          <article class="card">
+            <h3>Fund management</h3>
+            <p>Portfolio strategy, thesis-driven investment evaluation, and disciplined capital deployment are central to the site narrative.</p>
+            <div class="tag-row">
+              <span class="tag">Capital allocation</span>
+              <span class="tag">Portfolio strategy</span>
+              <span class="tag">Investment leadership</span>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Infrastructure sectors</h3>
+            <p>Energy, renewables, transportation, and real assets provide a strong sector backbone for the brand positioning.</p>
+            <div class="tag-row">
+              <span class="tag">Energy</span>
+              <span class="tag">Renewables</span>
+              <span class="tag">Transportation</span>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Global perspective</h3>
+            <p>Emerging markets positioning gives the site an international and cross-border investment context.</p>
+            <div class="tag-row">
+              <span class="tag">Emerging markets</span>
+              <span class="tag">Cross-border</span>
+              <span class="tag">Real assets</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="experience">
+      <div class="container">
+        <div class="section-head">
+          <div>
+            <h2>Experience narrative</h2>
+          </div>
+          <p>A seasoned fund management professional with over 20 years of experience, you offer a rare synthesis of technical engineering depth and sophisticated financial structuring. Your career is defined by an end-to-end mastery of the investment lifecycle—from originating and diligence to portfolio management and high-yield exits. Having pioneered proprietary impact models long before ESG became a standard mandate, you have consistently demonstrated that embedding environmental, community, and health metrics into the investment process is a primary driver of top-quartile returns.</p>
+        </div>
+        <div class="timeline">
+          <article class="timeline-item">
+            <div class="timeline-date">Phase 01</div>
+            <div>
+              <h3>Deep market experience</h3>
+              <p>Your expertise is rooted in the complexities of Emerging Markets, with a dominant footprint in the Indian investment landscape.</p>
+              <ul><li>
+              Portfolio Management: Successfully managed a portfolio of INR 1,000+ Cr across diverse sectors, including Energy, Renewables, Transportation, and Real Assets.</li>
+              <li>
+              AUM Management: Currently overseeing a target AUM of INR 3,000+ Cr across diversified funds (Affordable Housing, VC, and Climate Action).
+              </li>
+              <li>
+              Capital Mobilization: Proven track record in raising significant private capital, including INR 1,000+ Cr for specialized infrastructure leasing.
+              </li>
+              <li>
+              Strategic Networks: Possess a high-value ecosystem of global investors, intermediaries, and a pipeline of investee companies ranging from agile startups to large-scale corporates.</li>
+              </ul>
+              <div class="tag-row">
+                <span class="tag">20+ years</span>
+                <span class="tag">Cycle-tested</span>
+                <span class="tag">Decision discipline</span>
+              </div>
+            </div>
+          </article>
+          <article class="timeline-item">
+            <div class="timeline-date">Phase 02</div>
+            <div>
+              <h3>Sector specialization</h3>
+              You command a "full-stack" understanding of Real Assets and Infrastructure, encompassing both the financial structures and the physical technicalities of:
+              <ul><li>
+              Energy & Renewables: Transitioning from early-career power plant design to leading large-scale climate action investments.
+              </li>
+               <li>
+              Transportation: Specialized expertise in Airports, Roads, and Ports, including the founding of a market-leading airport leasing platform.
+              </li>
+               <li>
+               Real Assets: A deep understanding of the unique risk-return profiles, operational complexities, and value drivers in real asset investments.
+              </li>
+              <li>
+              Social Infrastructure: Driving capital toward Affordable Housing and community-centric development.
+              </li>
+              </ul> 
+              <div class="tag-row">
+                <span class="tag">Infrastructure</span>
+                <span class="tag">Asset-backed sectors</span>
+                <span class="tag">Long-term value</span>
+              </div>
+            </div>
+          </article>
+          <article class="timeline-item">
+            <div class="timeline-date">Phase 03</div>
+            <div>
+              <h3>Leadership evolution</h3>
+              Your leadership has evolved from technical design and operational improvement to entrepreneurial founding and institutional governance. * The Founder’s Lens: Built Pushpak Airport Leasing Solutions from the ground up into one of India's most profitable operating lease companies.
+              <ul> <li>
+              The Institutional Steward: As CEO of TNIFMC, you now lead state-level investment strategies, balancing fiduciary duties with ambitious socio-economic and climate goals.
+              </li>
+              <li>
+              The Visionary: Early adoption of impact-linked investing metrics, positioning you as a thought leader in sustainable finance.
+              </li>
+              </ul>
+              <div class="tag-row">
+                <span class="tag">CEO perspective</span>
+                <span class="tag">Startup success</span>
+                <span class="tag">Leadership brand</span>
+              </div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <div class="container">
+        <div class="quote-block">
+          <p>"A dual-threat investment leader combining technical engineering rigor with 20+ years of fund management expertise to deploy capital where it matters most: at the intersection of critical infrastructure, climate action, and top-tier financial performance in Emerging Markets."</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="contact">
+      <div class="container">
+        <!-- <div class="section-head">
+          <div>
+            <h2>Connect</h2>
+          </div>
+          <p>This current version gives you a polished starter website. The next iteration should enrich it with verified roles, company logos, biography details, publications, media mentions, and a professional portrait.</p>
+        </div> -->
+        <div class="timeline">
+          <article class="card">
+            <h3>Work History</h3>
+            Chief Executive Officer | TNIFMC (Tamil Nadu Infrastructure Fund Management Corporation) Present Leading the state-backed asset management company focused on infrastructure, venture capital, and climate action. Managing a multi-fund strategy with a target AUM of INR 3,000+ Cr.
+            <ul><li>
+            Founder & Managing Director | Pushpak Airport Leasing Solutions Established and scaled India’s premier private airport infrastructure leasing platform. Raised INR 1,000+ Cr in private capital and built it into a top-tier profitable operating lease entity.
+            </li>
+             <li>
+            Executive Investment Leader (Private Equity/Real Assets) Led global investments totaling US$ 550M+ across diverse sectors including Power, Roads, Ports, and Aviation, consistently delivering top-quartile returns.
+            </li>
+             <li>
+            Engineering & Operational Consultant Early career focused on the technical design and operational optimization of power plants across Emerging Markets, providing the technical foundation for future financial expertise.
+          </article>
+          <article class="card">
+            <h3>Major Funds & Firms</h3>
+            <ul><li>
+            TNIFMC Funds: * Tamil Nadu Shelter Fund (TNSF): Focused on Affordable Housing.
+            </li><ul><li>
+            Tamil Nadu Emerging Sector Fund (TNESF): Venture Capital for innovation-led growth.
+            </li><li>
+            Tamil Nadu Climate Fund: Driving sustainable climate action and renewable energy projects.
+            </li></ul>
+            <li>
+            Pushpak Airport Leasing: Specialized infrastructure financing and asset management.
+            </li></ul>
+            <div class="tag-row">
+              <a class="btn btn-outline" href="https://www.linkedin.com/in/krishna1710/" target="_blank" rel="noopener noreferrer">Open LinkedIn</a>
+            </div>
+          </article>
+          <article class="card">
+            <h3>Board & Advisory Roles</h3>
+            Member of the Board | TNIFMC: Directing strategic asset allocation and fund governance.
+            <ul><li>
+            Strategic Advisor | Emerging Markets Infrastructure: Consulted for large-scale corporates and government entities on structuring complex real asset transactions.
+            </li><li>
+            Impact Investment Committee Chair: Oversight of proprietary ESG-linked metrics across diverse portfolio companies.
+            </li></ul>
+          </article>
+          <article class="card">
+            <h3>Education</h3>
+            <ul><li>
+            <strong>Professional Background:</strong> Advanced training in Fund Management and Project Finance.
+            </li><li><strong>Academic Background:</strong> Specialized in Technical Design and Power Plant Operations
+            </li></ul>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-wrap">
+      <div>
+        <strong style="display:block; margin-bottom:6px; color:var(--text);">Krishna Chaitanya</strong>
+        <span>Executive profile website concept in a Kraken-inspired design language.</span>
+      </div>
+      <a href="https://www.linkedin.com/in/krishna1710/" target="_blank" rel="noopener noreferrer">View LinkedIn →</a>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      const root = document.documentElement;
+      const toggle = document.querySelector('[data-theme-toggle]');
+      let theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      root.setAttribute('data-theme', theme);
+      const icon = () => theme === 'dark'
+        ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>'
+        : '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
+      if (toggle) {
+        toggle.innerHTML = icon();
+        toggle.addEventListener('click', function () {
+          theme = theme === 'dark' ? 'light' : 'dark';
+          root.setAttribute('data-theme', theme);
+          toggle.innerHTML = icon();
+          toggle.setAttribute('aria-label', 'Switch to ' + (theme === 'dark' ? 'light' : 'dark') + ' mode');
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -28,3 +28,6 @@ backend/app/controllers/__pycache__/
 backend/app/controllers/__pycache__/*.pyc
 backend/app/__pycache__/
 nextjs-crm/
+
+# Database exports (auto-generated snapshots — keep locally, don't commit)
+data/exports/

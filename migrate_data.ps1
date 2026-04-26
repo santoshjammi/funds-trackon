@@ -8,11 +8,18 @@
     Imports all data files from the data\ directory into MongoDB using the
     backend Python import script. Works with both native MongoDB and Docker.
 
+    SAFETY: Before any destructive clear, the live database is automatically
+    exported to data\exports\<timestamp>\ so no data is ever lost.
+    Use -SkipBackup to skip this step (not recommended in production).
+
 .PARAMETER NoClear
     Append to existing data instead of clearing first (default: clear before import)
 
 .PARAMETER Docker
     Verify the Docker MongoDB container is running instead of native MongoDB
+
+.PARAMETER SkipBackup
+    Skip the automatic safety export (use with care — data cannot be recovered if lost)
 
 .EXAMPLE
     .\migrate_data.ps1
@@ -27,7 +34,8 @@
 [CmdletBinding()]
 param(
     [switch]$NoClear,
-    [switch]$Docker
+    [switch]$Docker,
+    [switch]$SkipBackup
 )
 
 $ErrorActionPreference = "Stop"
@@ -108,6 +116,22 @@ if (-not (Test-Path $pythonExe)) {
 Write-Host ""
 Write-Host "🔧 Python environment ready." -ForegroundColor Green
 
+# ── Safety export ──────────────────────────────────────────────────
+if (-not $NoClear -and -not $SkipBackup) {
+    Write-Host ""
+    Write-Host "🛡️  Safety export — backing up live database before clearing..." -ForegroundColor Cyan
+    $exportScript = "$RootDir\export_data.ps1"
+    $exportArgs   = @()
+    if ($Docker) { $exportArgs += "-Docker" }
+    & $exportScript $exportArgs
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "❌ Safety export failed. Aborting migration to protect existing data." -ForegroundColor Red
+        exit 1
+    }
+    Write-Host ""
+    Write-Host "✅ Backup complete. Proceeding with import." -ForegroundColor Green
+}
+
 # ── Run import ─────────────────────────────────────────────────────
 $importScript = "$RootDir\backend\scripts\import_data.py"
 $importArgs   = @($importScript)
@@ -122,6 +146,7 @@ if (-not $NoClear) {
 Write-Host "📊 Running data import..." -ForegroundColor Yellow
 Write-Host ""
 
+Set-Location "$RootDir\backend"
 & $pythonExe $importArgs
 
 if ($LASTEXITCODE -ne 0) {
@@ -134,6 +159,7 @@ Write-Host ""
 Write-Host "✅ Data migration completed!" -ForegroundColor Green
 Write-Host ""
 Write-Host "🌐 Your data is now available in MongoDB." -ForegroundColor Cyan
+Write-Host "   Backup location: data\exports\latest\" -ForegroundColor Gray
 Write-Host ""
 Write-Host "🚀 Start your application:" -ForegroundColor Yellow
 Write-Host "   Docker:  .\start.ps1"        -ForegroundColor White
